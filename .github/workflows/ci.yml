@@ -8,7 +8,7 @@ on:
 
 jobs:
   dataform:
-    name: Compile and test
+    name: Compile
     runs-on: ubuntu-latest
 
     steps:
@@ -23,11 +23,5 @@ jobs:
       - name: Install Dataform CLI
         run: npm install -g @dataform/cli
 
-      - name: Create dummy credentials
-        run: echo '{"projectId":"dummy","location":"US"}' > .df-credentials.json
-
       - name: Compile
         run: dataform compile
-
-      - name: Test
-        run: dataform test

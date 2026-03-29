@@ -18,7 +18,7 @@ This project is the Dataform equivalent of [postcard-company-datamart](https://g
 - **Incremental models done right** — `uniqueKey`, watermark-based filtering, `QUALIFY ROW_NUMBER()` deduplication to handle late-arriving duplicates, BigQuery partitioning and clustering
 - **No external dependencies for surrogate keys** — `TO_HEX(MD5(...))` implemented once in `includes/helpers.js`, no packages required
 - **Unambiguous `ref()` calls** — every reference uses the two-argument `ref("dataset", "table")` form, preventing silent resolution errors when table names collide across layers
-- **Unit tests that run locally** — `dataform test` requires no BigQuery connection; all model logic is testable during development
+- **Unit tests** — `dataform test` executes model logic against mock input tables in BigQuery; a live connection is required but no production data is touched
 - **Zero hardcoded configuration** — GCP project and GCS path are driven by `workflow_settings.yaml` vars, keeping the repo clean to commit and share
 
 ---
@@ -149,16 +149,14 @@ dataform run --full-refresh --actions postcard_company_staging.staging_reseller_
 
 ---
 
-## Local development (no BigQuery required)
-
-Compile and run unit tests locally without a BigQuery connection:
+## Local development
 
 ```bash
-dataform compile   # validates SQL structure and ref() resolution
-dataform test      # runs all unit tests
+dataform compile   # validates SQL structure and ref() resolution — no BigQuery connection needed
+dataform test      # runs unit tests against BigQuery using mock input data — requires credentials
 ```
 
-Unit tests mock their input tables inline and exercise model logic through the Dataform compiler — no data or credentials needed.
+`dataform compile` is safe to run anywhere with no credentials. The CI pipeline runs compile only on every push for this reason. `dataform test` requires a live BigQuery connection but executes against inline mock data, so no production tables are read or written.
 
 ---
 
