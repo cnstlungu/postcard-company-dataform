@@ -1,5 +1,7 @@
 # Postcard Company — Dataform
 
+![CI](https://github.com/cnstlungu/postcard-company-dataform/actions/workflows/ci.yml/badge.svg)
+
 A **Dataform v3** example project for an imaginary postcard company that sells directly and through resellers across Europe. It demonstrates real-world patterns for building a data warehouse on **BigQuery** using Dataform.
 
 This project is the Dataform equivalent of [postcard-company-datamart](https://github.com/cnstlungu/postcard-company-datamart) (dbt-core + DuckDB).
@@ -99,10 +101,24 @@ python generate.py
 cd ..
 ```
 
-Output lands in `generator/output/`. To control the number of direct transactions (default: 1,000,000):
+Output lands in `generator/output/`. The generator produces:
+
+| File | Rows | Description |
+|---|---|---|
+| `main.parquet` | 100,000 | Direct sales transactions (configurable via `N_TRANSACTIONS`) |
+| `resellers_type1.parquet` | 100,000 | 2 resellers × 50,000 transactions each |
+| `resellers_type2.parquet` | 100,000 | 2 resellers × 50,000 transactions each |
+| `customers.parquet` | 100,000 | Direct customer records |
+| `products.parquet` | 500 | Product catalogue |
+| `channels.parquet` | 3 | Sales channels |
+| `resellers.parquet` | 4 | Reseller reference data |
+
+After a full pipeline run, `fact_sales` contains ~210,000 rows.
+
+To override the number of direct transactions:
 
 ```bash
-N_TRANSACTIONS=100000 python generator/generate.py
+N_TRANSACTIONS=50000 python generator/generate.py
 ```
 
 ### 5. Upload Parquet files to GCS

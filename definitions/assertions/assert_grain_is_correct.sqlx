@@ -1,4 +1,5 @@
 config {
+  tags: ["assertions"],
   type: "assertion",
   description: "fact_sales grain check — sales_key must be unique (no duplicate transactions per sales agent)"
 }

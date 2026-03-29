@@ -1,0 +1,10 @@
+config {
+  tags: ["assertions"],
+  type: "assertion",
+  description: "Every bought_date_key in fact_sales must resolve to a row in dim_date — ensures the date dimension covers the full transaction date range"
+}
+
+SELECT DISTINCT f.bought_date_key AS failing_value
+FROM ${ref("postcard_company_core", "fact_sales")} f
+LEFT JOIN ${ref("postcard_company_core", "dim_date")} d ON f.bought_date_key = d.date_key
+WHERE d.date_key IS NULL

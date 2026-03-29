@@ -1,18 +1,34 @@
 config {
+  tags: ["assertions"],
   type: "assertion",
-  description: "dim_product — product_key is unique and not null; product_price is positive"
+  description: "dim_product — SCD2 integrity: product_key not null; at most one current version per product; valid_from not null; product_price is positive"
 }
 
-SELECT 'product_key not null' AS check, product_key AS failing_value
+SELECT 'product_key not null' AS check, COALESCE(product_key, 'NULL') AS failing_value
 FROM ${ref("postcard_company_core", "dim_product")}
 WHERE product_key IS NULL
 
 UNION ALL
 
-SELECT 'product_key not unique', product_key
+-- At most one is_current = TRUE row per original_product_id
+SELECT 'multiple current versions', original_product_id
 FROM ${ref("postcard_company_core", "dim_product")}
-GROUP BY product_key
+WHERE is_current = TRUE
+GROUP BY original_product_id
 HAVING COUNT(*) > 1
+
+UNION ALL
+
+SELECT 'valid_from not null', product_key
+FROM ${ref("postcard_company_core", "dim_product")}
+WHERE valid_from IS NULL
+
+UNION ALL
+
+-- valid_to must be after valid_from when set
+SELECT 'valid_to before valid_from', product_key
+FROM ${ref("postcard_company_core", "dim_product")}
+WHERE valid_to IS NOT NULL AND valid_to < valid_from
 
 UNION ALL
 

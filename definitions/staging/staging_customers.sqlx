@@ -48,7 +48,6 @@ reseller_type1_processed AS (
     reseller_id,
     ${helpers.generate_surrogate_key(['reseller_id', 'customer_email'])} AS customer_key
   FROM customers_reseller_type1
-  QUALIFY ROW_NUMBER() OVER (PARTITION BY reseller_id, customer_email ORDER BY customer_email) = 1
 ),
 
 customers_reseller_type2 AS (
@@ -78,7 +77,6 @@ reseller_type2_processed AS (
     reseller_id,
     ${helpers.generate_surrogate_key(['reseller_id', 'customer_email'])} AS customer_key
   FROM customers_reseller_type2
-  QUALIFY ROW_NUMBER() OVER (PARTITION BY reseller_id, customer_email ORDER BY customer_email) = 1
 ),
 
 customers_union AS (

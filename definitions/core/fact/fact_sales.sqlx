@@ -2,7 +2,7 @@ config {
   tags: ["core", "fact", "incremental"],
   type: "incremental",
   schema: "postcard_company_core",
-  description: "Sales fact table — grain is one row per transaction per sales agent, with all foreign keys to dims",
+  description: "Sales fact table — grain is one row per transaction per sales agent. transaction_id is a degenerate dimension (carried from source, no corresponding dim table). product_price is stored at time of sale deliberately — it captures the price that was charged, which may differ from the current price in dim_product.",
   uniqueKey: ["sales_key"],
   bigquery: {
     partitionBy: "DATE_TRUNC(transaction_date, MONTH)",

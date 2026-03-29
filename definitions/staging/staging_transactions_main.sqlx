@@ -40,6 +40,6 @@ SELECT
   t.bought_date,
   t.loaded_timestamp
 FROM trans_main t
-LEFT JOIN ${ref("postcard_company_core", "dim_product")}     p  ON t.product_id  = p.original_product_id
+LEFT JOIN ${ref("postcard_company_core", "dim_product")}     p  ON t.product_id  = p.original_product_id AND p.is_current = TRUE
 LEFT JOIN ${ref("postcard_company_core", "dim_channel")}     c  ON t.channel_id  = c.channel_key
 LEFT JOIN ${ref("postcard_company_core", "dim_customer")}    cu ON t.customer_key = cu.customer_key

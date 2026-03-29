@@ -3,5 +3,6 @@ node_modules/
 .df-credentials.json
 .env
 generator/output/
-generator/.venv/
 local_configure.sh
+.venv/
+venv/

@@ -1,4 +1,5 @@
 config {
+  tags: ["assertions"],
   type: "assertion",
   description: "fact_sales — all foreign keys and required measures are not null"
 }

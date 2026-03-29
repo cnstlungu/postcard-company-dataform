@@ -1,4 +1,5 @@
 config {
+  tags: ["assertions"],
   type: "assertion",
   description: "commission_pct must be NULL only for direct sales (sales_agent_key = 0); all resellers must have a non-NULL commission_pct"
 }

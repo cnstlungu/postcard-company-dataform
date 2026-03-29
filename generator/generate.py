@@ -5,8 +5,12 @@ import pyarrow.parquet as pq
 import os
 from faker import Faker
 from datetime import datetime, timedelta
+import itertools
 
 fake = Faker()
+
+# Global transaction ID counter for all generated transactions
+transaction_id_counter = itertools.count(0)
 
 # --- Assets & Constants moved from assets.py ---
 
@@ -78,7 +82,7 @@ def generate_main(n=1000000):
         qty = randrange(1,6)
 
         transaction = {
-        	       'transaction_id': i,
+        	       'transaction_id': next(transaction_id_counter),
         	       'customer_id': randrange(1,100000),
                        'product_id': product['product_id'],
                        'amount': product['price'] * qty,
@@ -159,7 +163,7 @@ def generate_type1_reseller_data(n=50000):
                         'Series City': product['city'],
                         'Created Date': boughtdate,
                         'Reseller ID' : resellerid,
-                        'Transaction ID': i
+                        'Transaction ID': next(transaction_id_counter)
                         }
 
             export.append(transaction)
@@ -201,7 +205,7 @@ def generate_type2_reseller_data(n = 50000 ):
                         'dateCreated': boughtdate,
                         'seriesCity': product['city'],
                         'Created Date': str(bought),
-                        'transactionID': i
+                        'transactionID': next(transaction_id_counter)
                         }
             export.append(transaction)
 

@@ -1,15 +1,62 @@
 config {
   tags: ["core", "dim"],
-  type: "table",
+  type: "operations",
   schema: "postcard_company_core",
-  description: "Product dimension — postcard series with city, price, and geography",
-  uniqueKey: ["product_key"]
+  name: "dim_product",
+  hasOutput: true,
+  description: "Product dimension — Type 2 SCD tracking price and geography changes over time. Surrogate key is stable (hash of product_id) so fact rows always resolve to the correct product. Use is_current = TRUE for current attributes; join via valid_from / COALESCE(valid_to, '9999-12-31') for point-in-time queries."
 }
 
+-- Create table on first run
+CREATE TABLE IF NOT EXISTS ${self()} (
+  product_key         STRING  NOT NULL,
+  original_product_id STRING  NOT NULL,
+  product_name        STRING,
+  geography_key       INT64,
+  product_price       FLOAT64,
+  valid_from          DATE    NOT NULL,
+  valid_to            DATE,
+  is_current          BOOL    NOT NULL
+);
+
+-- Step 1: expire rows where tracked attributes have changed
+MERGE ${self()} AS target
+USING (
+  SELECT
+    product_id   AS original_product_id,
+    product_name,
+    geography_key,
+    product_price
+  FROM ${ref("postcard_company_staging", "staging_products")}
+) AS source
+ON target.original_product_id = source.original_product_id
+  AND target.is_current = TRUE
+WHEN MATCHED AND (
+    target.product_price != source.product_price
+  OR COALESCE(CAST(target.geography_key AS STRING), '') != COALESCE(CAST(source.geography_key AS STRING), '')
+  OR target.product_name != source.product_name
+) THEN UPDATE SET
+  valid_to   = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY),
+  is_current = FALSE;
+
+-- Step 2: insert new versions (new products and products whose old version was just expired)
+INSERT INTO ${self()} (
+  product_key, original_product_id, product_name, geography_key, product_price,
+  valid_from, valid_to, is_current
+)
 SELECT
-  product_key,
-  product_id  AS original_product_id,
+  ${helpers.generate_surrogate_key(['product_id'])} AS product_key,
+  product_id   AS original_product_id,
   product_name,
   geography_key,
-  product_price
-FROM ${ref("postcard_company_staging", "staging_products")}
+  product_price,
+  CURRENT_DATE()  AS valid_from,
+  NULL            AS valid_to,
+  TRUE            AS is_current
+FROM ${ref("postcard_company_staging", "staging_products")} s
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM ${self()} d
+  WHERE d.original_product_id = s.product_id
+    AND d.is_current = TRUE
+);

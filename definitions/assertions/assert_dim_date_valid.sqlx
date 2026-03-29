@@ -1,4 +1,5 @@
 config {
+  tags: ["assertions"],
   type: "assertion",
   description: "dim_date — date_key and date_value are unique and not null"
 }

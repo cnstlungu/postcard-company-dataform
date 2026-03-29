@@ -1,4 +1,5 @@
 config {
+  tags: ["assertions"],
   type: "assertion",
   description: "All sales transactions must have a positive total_amount — zero or negative values indicate bad data"
 }

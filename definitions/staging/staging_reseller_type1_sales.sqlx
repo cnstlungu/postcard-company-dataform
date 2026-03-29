@@ -43,7 +43,7 @@ SELECT
   t.created_date,
   t.loaded_timestamp
 FROM trans_reseller t
-LEFT JOIN ${ref("postcard_company_core", "dim_product")}      p  ON t.product_name  = p.product_name
+LEFT JOIN ${ref("postcard_company_core", "dim_product")}      p  ON t.product_name  = p.product_name AND p.is_current = TRUE
 LEFT JOIN ${ref("postcard_company_core", "dim_channel")}      c  ON t.sales_channel = c.channel_name
 LEFT JOIN ${ref("postcard_company_core", "dim_customer")}     cu ON t.customer_key  = cu.customer_key
 LEFT JOIN ${ref("postcard_company_core", "dim_sales_agent")}  s  ON t.reseller_id   = s.original_reseller_id

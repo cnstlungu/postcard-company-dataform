@@ -1,4 +1,5 @@
 config {
+  tags: ["assertions"],
   type: "assertion",
   description: "dim_channel — channel_key is unique and not null; channel_name is not null and only contains known values"
 }

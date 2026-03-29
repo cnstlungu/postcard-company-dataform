@@ -2,7 +2,7 @@ config {
   tags: ["core", "dim"],
   type: "table",
   schema: "postcard_company_core",
-  description: "Customer dimension — unified across direct and reseller channels",
+  description: "Customer dimension — unified across direct sales and two reseller channels. Grain: one row per (source_channel, identifier), where identifier is customer_id for direct sales and (reseller_id, email) for reseller channels. True cross-channel deduplication by person would require a Master Data Management (MDM) layer outside this pipeline.",
   uniqueKey: ["customer_key"]
 }
 
@@ -19,3 +19,4 @@ SELECT
   customer_postal_code,
   sales_agent_key
 FROM ${ref("postcard_company_staging", "staging_customers")}
+QUALIFY ROW_NUMBER() OVER (PARTITION BY customer_key ORDER BY (SELECT NULL)) = 1

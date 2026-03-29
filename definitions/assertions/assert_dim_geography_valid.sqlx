@@ -1,4 +1,5 @@
 config {
+  tags: ["assertions"],
   type: "assertion",
   description: "dim_geography — geography_key is unique and not null"
 }

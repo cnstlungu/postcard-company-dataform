@@ -1,4 +1,5 @@
 config {
+  tags: ["assertions"],
   type: "assertion",
   description: "commission_pct must be between 0 and 1 (exclusive of NULL, which is valid for direct sales)"
 }
