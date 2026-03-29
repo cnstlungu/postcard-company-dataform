@@ -1,0 +1,30 @@
+config {
+  type: "test",
+  dataset: "staging_products",
+}
+
+input "postcard_company_raw", "raw_products" {
+  -- product P001: two versions (same city), should keep the latest
+  SELECT 'P001' AS product_id, 'London Postcard' AS name, 'London' AS city, 2.50 AS price, TIMESTAMP '2024-01-01 00:00:00' AS loaded_timestamp UNION ALL
+  SELECT 'P001' AS product_id, 'London Postcard' AS name, 'London' AS city, 2.99 AS price, TIMESTAMP '2024-01-02 00:00:00' AS loaded_timestamp UNION ALL
+  -- product P002: city not in geography => NULL geography_key
+  SELECT 'P002' AS product_id, 'Unknown City Postcard' AS name, 'Atlantis' AS city, 1.50 AS price, TIMESTAMP '2024-01-01 00:00:00' AS loaded_timestamp
+}
+
+input "postcard_company_raw", "geography" {
+  SELECT 2 AS id, 'London' AS cityname, 'UK' AS countryname, 'Western Europe' AS regionname
+}
+
+SELECT
+  'P001'                                          AS product_id,
+  ${helpers.generate_surrogate_key(["'P001'"])}   AS product_key,
+  'London Postcard'                               AS product_name,
+  2                                               AS geography_key,
+  2.99                                            AS product_price
+UNION ALL
+SELECT
+  'P002'                                          AS product_id,
+  ${helpers.generate_surrogate_key(["'P002'"])}   AS product_key,
+  'Unknown City Postcard'                         AS product_name,
+  NULL                                            AS geography_key,
+  1.50                                            AS product_price

@@ -1,0 +1,18 @@
+config {
+  tags: ["sources"],
+  type: "operations",
+  schema: "postcard_company_raw_input",
+  name: "resellers",
+  hasOutput: true,
+  description: "External table — reads resellers parquet from GCS with explicit schema"
+}
+
+CREATE OR REPLACE EXTERNAL TABLE ${self()} (
+  reseller_id   INT64,
+  reseller_name STRING,
+  commission_pct FLOAT64
+)
+OPTIONS (
+  format = 'PARQUET',
+  uris   = ['${dataform.projectConfig.vars.gcs_parquet_path}/resellers.parquet']
+)

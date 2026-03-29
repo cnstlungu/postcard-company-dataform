@@ -1,0 +1,68 @@
+config {
+  tags: ["core", "dim"],
+  type: "table",
+  schema: "postcard_company_core",
+  description: "Date dimension — every calendar day from 2015-01-01 to 2030-12-31 with week/month/quarter/year attributes",
+  uniqueKey: ["date_key"]
+}
+
+WITH generate_date AS (
+  SELECT date_value
+  FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2015-01-01', DATE '2030-12-31', INTERVAL 1 DAY)) AS date_value
+)
+
+SELECT
+  CAST(FORMAT_DATE('%Y%m%d', date_value) AS INT64)                                  AS date_key,
+  date_value,
+
+  -- Day attributes
+  EXTRACT(DAYOFYEAR  FROM date_value)                                               AS day_of_year,
+  EXTRACT(DAY        FROM date_value)                                               AS day_of_month,
+  EXTRACT(DAYOFWEEK  FROM date_value)                                               AS day_of_week,
+  MOD(CAST(EXTRACT(DAYOFWEEK FROM date_value) AS INT64) + 5, 7) + 1               AS iso_day_of_week,
+  FORMAT_DATE('%A', date_value)                                                     AS day_name,
+
+  -- Week attributes
+  CAST(CONCAT(
+    CAST(EXTRACT(YEAR  FROM date_value) AS STRING),
+    LPAD(CAST(EXTRACT(WEEK FROM date_value) AS STRING), 2, '0')
+  ) AS INT64)                                                                       AS week_key,
+  EXTRACT(WEEK FROM date_value)                                                     AS week_of_year,
+  DATE_TRUNC(date_value, WEEK)                                                      AS first_day_of_week,
+  DATE_ADD(DATE_TRUNC(date_value, WEEK), INTERVAL 6 DAY)                           AS last_day_of_week,
+
+  -- Month attributes
+  CAST(CONCAT(
+    CAST(EXTRACT(YEAR  FROM date_value) AS STRING),
+    LPAD(CAST(EXTRACT(MONTH FROM date_value) AS STRING), 2, '0')
+  ) AS INT64)                                                                       AS month_key,
+  EXTRACT(MONTH FROM date_value)                                                    AS month_of_year,
+  FORMAT_DATE('%b', date_value)                                                     AS month_name_short,
+  FORMAT_DATE('%B', date_value)                                                     AS month_name,
+  DATE_TRUNC(date_value, MONTH)                                                     AS first_day_of_month,
+  LAST_DAY(date_value, MONTH)                                                       AS last_day_of_month,
+
+  -- Quarter attributes
+  CAST(CONCAT(
+    CAST(EXTRACT(YEAR    FROM date_value) AS STRING),
+    CAST(EXTRACT(QUARTER FROM date_value) AS STRING)
+  ) AS INT64)                                                                       AS quarter_key,
+  EXTRACT(QUARTER FROM date_value)                                                  AS quarter_of_year,
+  DATE_DIFF(date_value, DATE_TRUNC(date_value, QUARTER), DAY) + 1                  AS day_of_quarter,
+  CONCAT('Q', CAST(EXTRACT(QUARTER FROM date_value) AS STRING))                    AS quarter_desc_short,
+  CONCAT('Quarter ', CAST(EXTRACT(QUARTER FROM date_value) AS STRING))             AS quarter_desc,
+  DATE_TRUNC(date_value, QUARTER)                                                   AS first_day_of_quarter,
+  LAST_DAY(DATE_ADD(DATE_TRUNC(date_value, QUARTER), INTERVAL 2 MONTH), MONTH)     AS last_day_of_quarter,
+
+  -- Year attributes
+  CAST(EXTRACT(YEAR FROM date_value) AS INT64)                                      AS year_key,
+  DATE_TRUNC(date_value, YEAR)                                                      AS first_day_of_year,
+  DATE_SUB(DATE_ADD(DATE_TRUNC(date_value, YEAR), INTERVAL 1 YEAR), INTERVAL 1 DAY) AS last_day_of_year,
+
+  -- Ordinal weekday within month (e.g. 2nd Monday of the month)
+  ROW_NUMBER() OVER (
+    PARTITION BY EXTRACT(YEAR FROM date_value), EXTRACT(MONTH FROM date_value), EXTRACT(DAYOFWEEK FROM date_value)
+    ORDER BY date_value
+  )                                                                                 AS ordinal_weekday_of_month
+
+FROM generate_date

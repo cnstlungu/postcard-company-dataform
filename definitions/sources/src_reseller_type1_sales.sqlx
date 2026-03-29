@@ -1,0 +1,14 @@
+config {
+  tags: ["sources"],
+  type: "operations",
+  schema: "postcard_company_raw_input",
+  name: "resellers_type1",
+  hasOutput: true,
+  description: "External table — reads reseller type 1 sales parquet from GCS. Auto-detect schema because source column names contain spaces (e.g. 'Product name'), which BigQuery does not allow in explicit schema DDL."
+}
+
+CREATE OR REPLACE EXTERNAL TABLE ${self()}
+OPTIONS (
+  format = 'PARQUET',
+  uris   = ['${dataform.projectConfig.vars.gcs_parquet_path}/resellers_type1.parquet']
+)

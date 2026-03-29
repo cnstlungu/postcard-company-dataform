@@ -1,0 +1,7 @@
+node_modules/
+.dataform/
+.df-credentials.json
+.env
+generator/output/
+generator/.venv/
+local_configure.sh

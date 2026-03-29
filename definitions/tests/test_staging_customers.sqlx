@@ -1,0 +1,95 @@
+config {
+  type: "test",
+  dataset: "staging_customers",
+}
+
+input "postcard_company_raw", "raw_customers" {
+  SELECT
+    42        AS customer_id,
+    'Alice'   AS first_name,
+    'Smith'   AS last_name,
+    'alice@example.com' AS email,
+    '+441234' AS phone_number,
+    '1 High St' AS address,
+    'London'  AS city,
+    'UK'      AS country,
+    'EC1A'    AS postal_code
+}
+
+input "postcard_company_raw", "raw_reseller_type1_sales" {
+  SELECT
+    'Bob'    AS customer_first_name,
+    'Jones'  AS customer_last_name,
+    'bob@example.com' AS customer_email,
+    '+449999' AS customer_phone,
+    '2 Low Rd' AS customer_address,
+    'Berlin'  AS customer_city,
+    'Germany' AS customer_country,
+    'BE10'    AS customer_postal_code,
+    10        AS reseller_id,
+    TIMESTAMP '2024-01-01' AS loaded_timestamp
+}
+
+input "postcard_company_raw", "raw_reseller_type2_sales" {
+  SELECT
+    'Carol'   AS customer_first_name,
+    'White'   AS customer_last_name,
+    'carol@example.com' AS customer_email,
+    '+33555'  AS customer_phone,
+    '3 Rue du Lac' AS customer_address,
+    'Paris'   AS customer_city,
+    'France'  AS customer_country,
+    'FR75'    AS customer_postal_code,
+    20        AS reseller_id,
+    TIMESTAMP '2024-01-01' AS loaded_timestamp
+}
+
+input "postcard_company_core", "dim_sales_agent" {
+  SELECT 0  AS sales_agent_key, 0  AS original_reseller_id UNION ALL
+  SELECT 10 AS sales_agent_key, 10 AS original_reseller_id UNION ALL
+  SELECT 20 AS sales_agent_key, 20 AS original_reseller_id
+}
+
+-- model UNION ALL order: reseller_type1 → reseller_type2 → direct
+
+-- reseller type 1 customer (reseller_id=10 → sales_agent_key=10)
+SELECT
+  ${helpers.generate_surrogate_key(['10', "'bob@example.com'"])} AS customer_key,
+  NULL                                                           AS original_customer_id,
+  'Bob'                                                          AS customer_first_name,
+  'Jones'                                                        AS customer_last_name,
+  'bob@example.com'                                              AS customer_email,
+  '+449999'                                                      AS customer_phone,
+  '2 Low Rd'                                                     AS customer_address,
+  'Berlin'                                                       AS customer_city,
+  'Germany'                                                      AS customer_country,
+  'BE10'                                                         AS customer_postal_code,
+  10                                                             AS sales_agent_key
+UNION ALL
+-- reseller type 2 customer (reseller_id=20 → sales_agent_key=20)
+SELECT
+  ${helpers.generate_surrogate_key(['20', "'carol@example.com'"])} AS customer_key,
+  NULL                                                             AS original_customer_id,
+  'Carol'                                                          AS customer_first_name,
+  'White'                                                          AS customer_last_name,
+  'carol@example.com'                                              AS customer_email,
+  '+33555'                                                         AS customer_phone,
+  '3 Rue du Lac'                                                   AS customer_address,
+  'Paris'                                                          AS customer_city,
+  'France'                                                         AS customer_country,
+  'FR75'                                                           AS customer_postal_code,
+  20                                                               AS sales_agent_key
+UNION ALL
+-- direct customer (reseller_id=0 → sales_agent_key=0)
+SELECT
+  ${helpers.generate_surrogate_key(["'0'", '42'])}         AS customer_key,
+  42                                                        AS original_customer_id,
+  'Alice'                                                   AS customer_first_name,
+  'Smith'                                                   AS customer_last_name,
+  'alice@example.com'                                       AS customer_email,
+  '+441234'                                                 AS customer_phone,
+  '1 High St'                                               AS customer_address,
+  'London'                                                  AS customer_city,
+  'UK'                                                      AS customer_country,
+  'EC1A'                                                    AS customer_postal_code,
+  0                                                         AS sales_agent_key

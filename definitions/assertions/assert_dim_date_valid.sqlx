@@ -1,0 +1,28 @@
+config {
+  type: "assertion",
+  description: "dim_date — date_key and date_value are unique and not null"
+}
+
+SELECT 'date_key not null' AS check, CAST(date_key AS STRING) AS failing_value
+FROM ${ref("postcard_company_core", "dim_date")}
+WHERE date_key IS NULL
+
+UNION ALL
+
+SELECT 'date_key not unique', CAST(date_key AS STRING)
+FROM ${ref("postcard_company_core", "dim_date")}
+GROUP BY date_key
+HAVING COUNT(*) > 1
+
+UNION ALL
+
+SELECT 'date_value not null', CAST(date_value AS STRING)
+FROM ${ref("postcard_company_core", "dim_date")}
+WHERE date_value IS NULL
+
+UNION ALL
+
+SELECT 'date_value not unique', CAST(date_value AS STRING)
+FROM ${ref("postcard_company_core", "dim_date")}
+GROUP BY date_value
+HAVING COUNT(*) > 1

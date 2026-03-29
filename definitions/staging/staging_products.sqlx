@@ -1,0 +1,16 @@
+config {
+  tags: ["staging"],
+  type: "view",
+  schema: "postcard_company_staging",
+  description: "Staged products — deduplicated, surrogate key, geography join"
+}
+
+SELECT
+  product_id,
+  ${helpers.generate_surrogate_key(['product_id'])} AS product_key,
+  name         AS product_name,
+  g.id         AS geography_key,
+  price        AS product_price
+FROM ${ref("postcard_company_raw", "raw_products")} e
+LEFT JOIN ${ref("postcard_company_raw", "geography")} g ON g.cityname = e.city
+QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY e.loaded_timestamp DESC) = 1

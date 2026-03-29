@@ -1,0 +1,26 @@
+config {
+  tags: ["raw"],
+  type: "view",
+  schema: "postcard_company_raw",
+  description: "Raw sales from Reseller Type 1 — normalizes auto-detected column names (spaces → underscores) to clean aliases"
+}
+
+SELECT
+  Product_name          AS product_name,
+  Quantity              AS quantity,
+  Total_amount          AS total_amount,
+  Sales_Channel         AS sales_channel,
+  Customer_First_Name   AS customer_first_name,
+  Customer_Last_Name    AS customer_last_name,
+  Customer_Email        AS customer_email,
+  Customer_Phone        AS customer_phone,
+  Customer_Address      AS customer_address,
+  Customer_City         AS customer_city,
+  Customer_Country      AS customer_country,
+  Customer_Postal_Code  AS customer_postal_code,
+  Series_City           AS series_city,
+  Created_Date          AS created_date,
+  Reseller_ID           AS reseller_id,
+  Transaction_ID        AS transaction_id,
+  CURRENT_TIMESTAMP()   AS loaded_timestamp
+FROM ${ref("postcard_company_raw_input", "resellers_type1")}

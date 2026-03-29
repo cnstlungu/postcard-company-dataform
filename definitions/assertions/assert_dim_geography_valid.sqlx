@@ -1,0 +1,15 @@
+config {
+  type: "assertion",
+  description: "dim_geography — geography_key is unique and not null"
+}
+
+SELECT 'geography_key not null' AS check, CAST(geography_key AS STRING) AS failing_value
+FROM ${ref("postcard_company_core", "dim_geography")}
+WHERE geography_key IS NULL
+
+UNION ALL
+
+SELECT 'geography_key not unique', CAST(geography_key AS STRING)
+FROM ${ref("postcard_company_core", "dim_geography")}
+GROUP BY geography_key
+HAVING COUNT(*) > 1

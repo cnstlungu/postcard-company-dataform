@@ -1,0 +1,45 @@
+config {
+  tags: ["staging", "incremental"],
+  type: "incremental",
+  schema: "postcard_company_staging",
+  description: "Incremental staging of direct-channel transactions — joined to dims for keys",
+  uniqueKey: ["transaction_id"],
+  bigquery: {
+    partitionBy: "bought_date"
+  }
+}
+
+WITH trans_main AS (
+  SELECT
+    ${helpers.generate_surrogate_key(["'0'", 'customer_id'])} AS customer_key,
+    customer_id,
+    transaction_id,
+    product_id,
+    amount,
+    qty,
+    channel_id,
+    CAST(bought_date AS DATE)  AS bought_date,
+    loaded_timestamp
+  FROM ${ref("postcard_company_raw", "raw_transactions")}
+  ${when(incremental(), `WHERE loaded_timestamp > (SELECT MAX(loaded_timestamp) FROM ${self()})`)}
+)
+
+SELECT
+  t.customer_key,
+  t.transaction_id,
+  p.product_key,
+  c.channel_key,
+  0                                                        AS reseller_id,
+  CAST(FORMAT_DATE('%Y%m%d', t.bought_date) AS INT64)      AS bought_date_key,
+  t.amount                                                 AS total_amount,
+  t.qty,
+  p.product_price,
+  p.geography_key,
+  CAST(NULL AS NUMERIC)                                    AS commissionpaid,
+  CAST(NULL AS NUMERIC)                                    AS commissionpct,
+  t.bought_date,
+  t.loaded_timestamp
+FROM trans_main t
+LEFT JOIN ${ref("postcard_company_core", "dim_product")}     p  ON t.product_id  = p.original_product_id
+LEFT JOIN ${ref("postcard_company_core", "dim_channel")}     c  ON t.channel_id  = c.channel_key
+LEFT JOIN ${ref("postcard_company_core", "dim_customer")}    cu ON t.customer_key = cu.customer_key

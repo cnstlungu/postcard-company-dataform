@@ -1,0 +1,32 @@
+config {
+  tags: ["core", "fact", "incremental"],
+  type: "incremental",
+  schema: "postcard_company_core",
+  description: "Sales fact table — grain is one row per transaction per sales agent, with all foreign keys to dims",
+  uniqueKey: ["sales_key"],
+  bigquery: {
+    partitionBy: "DATE_TRUNC(transaction_date, MONTH)",
+    clusterBy: ["channel_key", "sales_agent_key"]
+  }
+}
+
+SELECT
+  ${helpers.generate_surrogate_key(['sa.sales_agent_key', 't.transaction_id'])} AS sales_key,
+  t.customer_key,
+  t.transaction_id,
+  t.product_key,
+  t.channel_key,
+  t.bought_date_key,
+  t.geography_key,
+  sa.sales_agent_key,
+  t.total_amount,
+  t.qty,
+  t.commissionpct,
+  t.commissionpaid,
+  t.product_price,
+  t.transaction_date,
+  t.loaded_timestamp
+FROM ${ref("postcard_company_staging", "staging_transactions")} t
+LEFT JOIN ${ref("postcard_company_core", "dim_sales_agent")} sa ON t.reseller_id = sa.original_reseller_id
+${when(incremental(), `WHERE t.loaded_timestamp > (SELECT MAX(t2.loaded_timestamp) FROM ${self()} t2)`)}
+QUALIFY ROW_NUMBER() OVER (PARTITION BY sales_key ORDER BY transaction_date DESC) = 1

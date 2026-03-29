@@ -1,0 +1,15 @@
+config {
+  type: "assertion",
+  description: "dim_sales_agent — sales_agent_key is unique and not null"
+}
+
+SELECT 'sales_agent_key not null' AS check, CAST(sales_agent_key AS STRING) AS failing_value
+FROM ${ref("postcard_company_core", "dim_sales_agent")}
+WHERE sales_agent_key IS NULL
+
+UNION ALL
+
+SELECT 'sales_agent_key not unique', CAST(sales_agent_key AS STRING)
+FROM ${ref("postcard_company_core", "dim_sales_agent")}
+GROUP BY sales_agent_key
+HAVING COUNT(*) > 1

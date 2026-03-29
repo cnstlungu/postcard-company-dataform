@@ -1,0 +1,17 @@
+config {
+  tags: ["sources"],
+  type: "operations",
+  schema: "postcard_company_raw_input",
+  name: "channels",
+  hasOutput: true,
+  description: "External table — reads channels parquet from GCS with explicit schema"
+}
+
+CREATE OR REPLACE EXTERNAL TABLE ${self()} (
+  channel_name STRING,
+  channel_id   INT64
+)
+OPTIONS (
+  format = 'PARQUET',
+  uris   = ['${dataform.projectConfig.vars.gcs_parquet_path}/channels.parquet']
+)

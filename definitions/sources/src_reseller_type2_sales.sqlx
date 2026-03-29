@@ -1,0 +1,14 @@
+config {
+  tags: ["sources"],
+  type: "operations",
+  schema: "postcard_company_raw_input",
+  name: "resellers_type2",
+  hasOutput: true,
+  description: "External table — reads reseller type 2 sales parquet from GCS. Auto-detect schema because source column names contain hyphens (e.g. 'reseller-id'), which BigQuery does not allow in explicit schema DDL."
+}
+
+CREATE OR REPLACE EXTERNAL TABLE ${self()}
+OPTIONS (
+  format = 'PARQUET',
+  uris   = ['${dataform.projectConfig.vars.gcs_parquet_path}/resellers_type2.parquet']
+)

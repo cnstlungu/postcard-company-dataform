@@ -1,0 +1,19 @@
+config {
+  tags: ["raw"],
+  type: "view",
+  schema: "postcard_company_raw",
+  description: "Raw customers extracted from source with load timestamp"
+}
+
+SELECT
+  customer_id,
+  first_name,
+  last_name,
+  email,
+  phone_number,
+  address,
+  city,
+  country,
+  postal_code,
+  CURRENT_TIMESTAMP() AS loaded_timestamp
+FROM ${ref("postcard_company_raw_input", "customers")}

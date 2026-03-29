@@ -1,0 +1,13 @@
+config {
+  tags: ["raw"],
+  type: "view",
+  schema: "postcard_company_raw",
+  description: "Raw resellers extracted from source with load timestamp"
+}
+
+SELECT
+  reseller_id,
+  reseller_name,
+  commission_pct,
+  CURRENT_TIMESTAMP() AS loaded_timestamp
+FROM ${ref("postcard_company_raw_input", "resellers")}

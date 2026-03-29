@@ -1,0 +1,12 @@
+config {
+  tags: ["raw"],
+  type: "view",
+  schema: "postcard_company_raw",
+  description: "Raw channels extracted from source with load timestamp"
+}
+
+SELECT
+  channel_name,
+  CAST(channel_id AS INT64) AS channel_id,
+  CURRENT_TIMESTAMP() AS loaded_timestamp
+FROM ${ref("postcard_company_raw_input", "channels")}

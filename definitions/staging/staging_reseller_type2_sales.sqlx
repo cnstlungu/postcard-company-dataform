@@ -1,0 +1,49 @@
+config {
+  tags: ["staging", "incremental"],
+  type: "incremental",
+  schema: "postcard_company_staging",
+  description: "Incremental staging of Reseller Type 2 sales — joined to dims for keys, commission calculated",
+  uniqueKey: ["transaction_id"],
+  bigquery: {
+    partitionBy: "created_date"
+  }
+}
+
+WITH trans_resellers AS (
+  SELECT
+    ${helpers.generate_surrogate_key(['reseller_id', 'customer_email'])} AS customer_key,
+    product_name,
+    qty             AS quantity,
+    total_amount,
+    sales_channel,
+    customer_email,
+    series_city,
+    CAST(created_date AS DATE)        AS created_date,
+    CAST(reseller_id AS INT64)        AS reseller_id,
+    CAST(transaction_id AS INT64)     AS transaction_id,
+    loaded_timestamp
+  FROM ${ref("postcard_company_raw", "raw_reseller_type2_sales")}
+  ${when(incremental(), `WHERE loaded_timestamp > (SELECT MAX(loaded_timestamp) FROM ${self()})`)}
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY transaction_id ORDER BY loaded_timestamp DESC) = 1
+)
+
+SELECT
+  t.customer_key,
+  t.transaction_id,
+  p.product_key,
+  c.channel_key,
+  t.reseller_id,
+  CAST(FORMAT_DATE('%Y%m%d', t.created_date) AS INT64)     AS bought_date_key,
+  CAST(t.total_amount AS NUMERIC)                          AS total_amount,
+  CAST(t.quantity     AS INT64)                            AS quantity,
+  CAST(p.product_price AS NUMERIC)                         AS product_price,
+  p.geography_key,
+  s.commission_pct * CAST(t.total_amount AS NUMERIC)       AS commissionpaid,
+  s.commission_pct                                         AS commissionpct,
+  t.created_date,
+  t.loaded_timestamp
+FROM trans_resellers t
+LEFT JOIN ${ref("postcard_company_core", "dim_product")}      p  ON t.product_name  = p.product_name
+LEFT JOIN ${ref("postcard_company_core", "dim_channel")}      c  ON t.sales_channel = c.channel_name
+LEFT JOIN ${ref("postcard_company_core", "dim_customer")}     cu ON t.customer_key  = cu.customer_key
+LEFT JOIN ${ref("postcard_company_core", "dim_sales_agent")}  s  ON t.reseller_id   = s.original_reseller_id

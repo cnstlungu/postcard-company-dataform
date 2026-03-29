@@ -1,0 +1,6 @@
+defaultProject: your-gcp-project-here
+defaultDataset: postcard_company_assertions
+defaultLocation: EU
+dataformCoreVersion: 3.0.0
+vars:
+  gcs_parquet_path: gs://your-bucket-here/parquet

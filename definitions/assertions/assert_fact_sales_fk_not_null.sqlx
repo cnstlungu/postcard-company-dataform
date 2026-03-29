@@ -1,0 +1,50 @@
+config {
+  type: "assertion",
+  description: "fact_sales — all foreign keys and required measures are not null"
+}
+
+SELECT 'sales_key not null' AS check, CAST(transaction_id AS STRING) AS failing_value
+FROM ${ref("postcard_company_core", "fact_sales")}
+WHERE sales_key IS NULL
+
+UNION ALL
+
+SELECT 'channel_key not null', CAST(transaction_id AS STRING)
+FROM ${ref("postcard_company_core", "fact_sales")}
+WHERE channel_key IS NULL
+
+UNION ALL
+
+SELECT 'customer_key not null', CAST(transaction_id AS STRING)
+FROM ${ref("postcard_company_core", "fact_sales")}
+WHERE customer_key IS NULL
+
+UNION ALL
+
+SELECT 'product_key not null', CAST(transaction_id AS STRING)
+FROM ${ref("postcard_company_core", "fact_sales")}
+WHERE product_key IS NULL
+
+UNION ALL
+
+SELECT 'geography_key not null', CAST(transaction_id AS STRING)
+FROM ${ref("postcard_company_core", "fact_sales")}
+WHERE geography_key IS NULL
+
+UNION ALL
+
+SELECT 'bought_date_key not null', CAST(transaction_id AS STRING)
+FROM ${ref("postcard_company_core", "fact_sales")}
+WHERE bought_date_key IS NULL
+
+UNION ALL
+
+SELECT 'qty not null', CAST(transaction_id AS STRING)
+FROM ${ref("postcard_company_core", "fact_sales")}
+WHERE qty IS NULL
+
+UNION ALL
+
+SELECT 'total_amount not null', CAST(transaction_id AS STRING)
+FROM ${ref("postcard_company_core", "fact_sales")}
+WHERE total_amount IS NULL

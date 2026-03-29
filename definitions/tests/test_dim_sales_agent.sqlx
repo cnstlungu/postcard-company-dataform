@@ -1,0 +1,15 @@
+config {
+  type: "test",
+  dataset: "dim_sales_agent",
+}
+
+input "postcard_company_staging", "staging_resellers" {
+  SELECT 10 AS reseller_id, 'Best Postcards Ltd' AS reseller_name, 0.12 AS commission_pct UNION ALL
+  SELECT 20 AS reseller_id, 'Card Kingdom'       AS reseller_name, 0.08 AS commission_pct
+}
+
+-- real resellers
+SELECT 10 AS sales_agent_key, 10 AS original_reseller_id, 'Best Postcards Ltd' AS reseller_name, 0.12        AS commission_pct UNION ALL
+SELECT 20 AS sales_agent_key, 20 AS original_reseller_id, 'Card Kingdom'       AS reseller_name, 0.08        AS commission_pct UNION ALL
+-- synthetic direct sales row
+SELECT 0  AS sales_agent_key, 0  AS original_reseller_id, 'Direct Sales'       AS reseller_name, CAST(NULL AS FLOAT64) AS commission_pct

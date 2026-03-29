@@ -1,0 +1,14 @@
+config {
+  type: "test",
+  dataset: "staging_channels"
+}
+
+input "postcard_company_raw", "raw_channels" {
+  SELECT 1 AS channel_id, 'web'      AS channel_name UNION ALL
+  SELECT 2 AS channel_id, 'in-store' AS channel_name UNION ALL
+  SELECT 3 AS channel_id, 'mobile app' AS channel_name
+}
+
+SELECT 1 AS channel_key, 1 AS original_channel_id, 'web'       AS channel_name UNION ALL
+SELECT 2 AS channel_key, 2 AS original_channel_id, 'in-store'  AS channel_name UNION ALL
+SELECT 3 AS channel_key, 3 AS original_channel_id, 'mobile app' AS channel_name

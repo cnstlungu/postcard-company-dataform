@@ -1,0 +1,21 @@
+config {
+  type: "assertion",
+  description: "dim_customer — customer_key is unique and not null; customer_email is not null"
+}
+
+SELECT 'customer_key not null' AS check, customer_key AS failing_value
+FROM ${ref("postcard_company_core", "dim_customer")}
+WHERE customer_key IS NULL
+
+UNION ALL
+
+SELECT 'customer_key not unique', customer_key
+FROM ${ref("postcard_company_core", "dim_customer")}
+GROUP BY customer_key
+HAVING COUNT(*) > 1
+
+UNION ALL
+
+SELECT 'customer_email not null', customer_key
+FROM ${ref("postcard_company_core", "dim_customer")}
+WHERE customer_email IS NULL

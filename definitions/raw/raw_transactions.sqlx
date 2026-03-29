@@ -1,0 +1,17 @@
+config {
+  tags: ["raw"],
+  type: "view",
+  schema: "postcard_company_raw",
+  description: "Raw transactions from the direct (main) sales channel with load timestamp"
+}
+
+SELECT
+  transaction_id,
+  customer_id,
+  product_id,
+  amount,
+  CAST(qty AS INT64) AS qty,
+  channel_id,
+  bought_date,
+  CURRENT_TIMESTAMP() AS loaded_timestamp
+FROM ${ref("postcard_company_raw_input", "main")}

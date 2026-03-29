@@ -1,0 +1,22 @@
+config {
+  tags: ["core", "dim"],
+  type: "table",
+  schema: "postcard_company_core",
+  description: "Sales agent dimension — resellers plus a synthetic 'Direct Sales' row (key = 0)",
+  uniqueKey: ["sales_agent_key"]
+}
+
+SELECT
+  reseller_id   AS sales_agent_key,
+  reseller_id   AS original_reseller_id,
+  reseller_name,
+  commission_pct
+FROM ${ref("postcard_company_staging", "staging_resellers")}
+
+UNION ALL
+
+SELECT
+  0             AS sales_agent_key,
+  0             AS original_reseller_id,
+  'Direct Sales' AS reseller_name,
+  CAST(NULL AS FLOAT64) AS commission_pct

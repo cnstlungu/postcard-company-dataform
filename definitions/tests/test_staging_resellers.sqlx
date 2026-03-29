@@ -1,0 +1,15 @@
+config {
+  type: "test",
+  dataset: "staging_resellers",
+}
+
+input "postcard_company_raw", "raw_resellers" {
+  -- reseller 1: two versions, should keep the later one
+  SELECT 1 AS reseller_id, 'Reseller A'         AS reseller_name, 0.10 AS commission_pct, TIMESTAMP '2024-01-01 00:00:00' AS loaded_timestamp UNION ALL
+  SELECT 1 AS reseller_id, 'Reseller A Updated' AS reseller_name, 0.15 AS commission_pct, TIMESTAMP '2024-01-02 00:00:00' AS loaded_timestamp UNION ALL
+  -- reseller 2: single version
+  SELECT 2 AS reseller_id, 'Reseller B'         AS reseller_name, 0.20 AS commission_pct, TIMESTAMP '2024-01-01 00:00:00' AS loaded_timestamp
+}
+
+SELECT 1 AS reseller_id, 'Reseller A Updated' AS reseller_name, 0.15 AS commission_pct UNION ALL
+SELECT 2 AS reseller_id, 'Reseller B'         AS reseller_name, 0.20 AS commission_pct

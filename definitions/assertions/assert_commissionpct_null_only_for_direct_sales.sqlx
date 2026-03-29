@@ -1,0 +1,10 @@
+config {
+  type: "assertion",
+  description: "commission_pct must be NULL only for direct sales (sales_agent_key = 0); all resellers must have a non-NULL commission_pct"
+}
+
+SELECT *
+FROM ${ref("postcard_company_core", "dim_sales_agent")}
+WHERE
+  (sales_agent_key != 0 AND commission_pct IS NULL)
+  OR (sales_agent_key = 0 AND commission_pct IS NOT NULL)

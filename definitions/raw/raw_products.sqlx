@@ -1,0 +1,14 @@
+config {
+  tags: ["raw"],
+  type: "view",
+  schema: "postcard_company_raw",
+  description: "Raw products extracted from source with load timestamp"
+}
+
+SELECT
+  name,
+  TRIM(city) AS city,
+  price,
+  product_id,
+  CURRENT_TIMESTAMP() AS loaded_timestamp
+FROM ${ref("postcard_company_raw_input", "products")}

@@ -1,0 +1,19 @@
+config {
+  tags: ["sources"],
+  type: "operations",
+  schema: "postcard_company_raw_input",
+  name: "products",
+  hasOutput: true,
+  description: "External table — reads products parquet from GCS with explicit schema"
+}
+
+CREATE OR REPLACE EXTERNAL TABLE ${self()} (
+  name       STRING,
+  city       STRING,
+  price      FLOAT64,
+  product_id STRING
+)
+OPTIONS (
+  format = 'PARQUET',
+  uris   = ['${dataform.projectConfig.vars.gcs_parquet_path}/products.parquet']
+)

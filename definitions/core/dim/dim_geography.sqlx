@@ -1,0 +1,14 @@
+config {
+  tags: ["core", "dim"],
+  type: "table",
+  schema: "postcard_company_core",
+  description: "Geography dimension — 100 European cities with country and region",
+  uniqueKey: ["geography_key"]
+}
+
+SELECT
+  id          AS geography_key,
+  cityname    AS city_name,
+  countryname AS country_name,
+  regionname  AS region_name
+FROM ${ref("postcard_company_raw", "geography")}

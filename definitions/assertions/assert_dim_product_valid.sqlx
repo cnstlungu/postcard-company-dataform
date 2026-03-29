@@ -1,0 +1,21 @@
+config {
+  type: "assertion",
+  description: "dim_product — product_key is unique and not null; product_price is positive"
+}
+
+SELECT 'product_key not null' AS check, product_key AS failing_value
+FROM ${ref("postcard_company_core", "dim_product")}
+WHERE product_key IS NULL
+
+UNION ALL
+
+SELECT 'product_key not unique', product_key
+FROM ${ref("postcard_company_core", "dim_product")}
+GROUP BY product_key
+HAVING COUNT(*) > 1
+
+UNION ALL
+
+SELECT 'product_price not positive', product_key
+FROM ${ref("postcard_company_core", "dim_product")}
+WHERE product_price <= 0

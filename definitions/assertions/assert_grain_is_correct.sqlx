@@ -1,0 +1,11 @@
+config {
+  type: "assertion",
+  description: "fact_sales grain check — sales_key must be unique (no duplicate transactions per sales agent)"
+}
+
+SELECT
+  sales_key,
+  COUNT(*) AS row_count
+FROM ${ref("postcard_company_core", "fact_sales")}
+GROUP BY sales_key
+HAVING COUNT(*) > 1

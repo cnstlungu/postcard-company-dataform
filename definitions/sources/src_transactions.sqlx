@@ -1,0 +1,22 @@
+config {
+  tags: ["sources"],
+  type: "operations",
+  schema: "postcard_company_raw_input",
+  name: "main",
+  hasOutput: true,
+  description: "External table — reads main transactions parquet from GCS with explicit schema"
+}
+
+CREATE OR REPLACE EXTERNAL TABLE ${self()} (
+  transaction_id INT64,
+  customer_id    INT64,
+  product_id     STRING,
+  amount         FLOAT64,
+  qty            INT64,
+  channel_id     INT64,
+  bought_date    STRING
+)
+OPTIONS (
+  format = 'PARQUET',
+  uris   = ['${dataform.projectConfig.vars.gcs_parquet_path}/main.parquet']
+)

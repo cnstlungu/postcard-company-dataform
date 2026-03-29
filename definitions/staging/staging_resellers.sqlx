@@ -1,0 +1,13 @@
+config {
+  tags: ["staging"],
+  type: "view",
+  schema: "postcard_company_staging",
+  description: "Staged resellers — deduplicated, cast to INT64"
+}
+
+SELECT
+  CAST(reseller_id AS INT64) AS reseller_id,
+  reseller_name,
+  commission_pct
+FROM ${ref("postcard_company_raw", "raw_resellers")}
+QUALIFY ROW_NUMBER() OVER (PARTITION BY reseller_id ORDER BY loaded_timestamp DESC) = 1

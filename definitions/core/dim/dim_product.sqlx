@@ -1,0 +1,15 @@
+config {
+  tags: ["core", "dim"],
+  type: "table",
+  schema: "postcard_company_core",
+  description: "Product dimension — postcard series with city, price, and geography",
+  uniqueKey: ["product_key"]
+}
+
+SELECT
+  product_key,
+  product_id  AS original_product_id,
+  product_name,
+  geography_key,
+  product_price
+FROM ${ref("postcard_company_staging", "staging_products")}

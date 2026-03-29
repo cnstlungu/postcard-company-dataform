@@ -1,0 +1,27 @@
+config {
+  type: "assertion",
+  description: "dim_channel — channel_key is unique and not null; channel_name is not null and only contains known values"
+}
+
+SELECT 'channel_key not null' AS check, CAST(channel_key AS STRING) AS failing_value
+FROM ${ref("postcard_company_core", "dim_channel")}
+WHERE channel_key IS NULL
+
+UNION ALL
+
+SELECT 'channel_key not unique', CAST(channel_key AS STRING)
+FROM ${ref("postcard_company_core", "dim_channel")}
+GROUP BY channel_key
+HAVING COUNT(*) > 1
+
+UNION ALL
+
+SELECT 'channel_name not null', channel_name
+FROM ${ref("postcard_company_core", "dim_channel")}
+WHERE channel_name IS NULL
+
+UNION ALL
+
+SELECT 'channel_name invalid value', channel_name
+FROM ${ref("postcard_company_core", "dim_channel")}
+WHERE channel_name NOT IN ('in-store', 'web', 'mobile app')

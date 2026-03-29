@@ -1,0 +1,13 @@
+config {
+  tags: ["core", "dim"],
+  type: "table",
+  schema: "postcard_company_core",
+  description: "Channel dimension — sales channels (in-store, web, mobile app)",
+  uniqueKey: ["channel_key"]
+}
+
+SELECT
+  channel_key,
+  original_channel_id,
+  channel_name
+FROM ${ref("postcard_company_staging", "staging_channels")}

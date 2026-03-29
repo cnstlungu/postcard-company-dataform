@@ -1,0 +1,8 @@
+config {
+  type: "assertion",
+  description: "All sales transactions must have a positive total_amount — zero or negative values indicate bad data"
+}
+
+SELECT *
+FROM ${ref("postcard_company_core", "fact_sales")}
+WHERE total_amount <= 0
