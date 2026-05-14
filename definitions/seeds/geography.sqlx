@@ -1,5 +1,5 @@
 config {
-  tags: ["raw"],
+  tags: ["raw", "schedule_daily"],
   type: "table",
   schema: "postcard_company_raw",
   description: "Static geography reference — 100 European cities with country and region. Equivalent to the dbt seed geography.csv."

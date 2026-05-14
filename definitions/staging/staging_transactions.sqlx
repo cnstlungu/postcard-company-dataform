@@ -1,5 +1,5 @@
 config {
-  tags: ["staging"],
+  tags: ["staging", "schedule_daily"],
   type: "table",
   schema: "postcard_company_staging",
   description: "Full union of all transaction sources: direct sales + reseller type 1 + reseller type 2"

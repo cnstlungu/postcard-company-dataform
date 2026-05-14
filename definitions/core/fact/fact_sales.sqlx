@@ -1,5 +1,5 @@
 config {
-  tags: ["core", "fact", "incremental"],
+  tags: ["core", "fact", "incremental", "schedule_daily"],
   type: "incremental",
   schema: "postcard_company_core",
   description: "Sales fact table — grain is one row per transaction per sales agent. transaction_id is a degenerate dimension (carried from source, no corresponding dim table). product_price is stored at time of sale deliberately — it captures the price that was charged, which may differ from the current price in dim_product.",

@@ -1,5 +1,5 @@
 config {
-  tags: ["staging"],
+  tags: ["staging", "schedule_daily"],
   type: "view",
   schema: "postcard_company_staging",
   description: "Staged channels — adds surrogate key alias"

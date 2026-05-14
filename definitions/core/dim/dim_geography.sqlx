@@ -1,5 +1,5 @@
 config {
-  tags: ["core", "dim"],
+  tags: ["core", "dim", "schedule_daily"],
   type: "table",
   schema: "postcard_company_core",
   description: "Geography dimension — 100 European cities with country and region",

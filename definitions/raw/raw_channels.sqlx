@@ -1,5 +1,5 @@
 config {
-  tags: ["raw"],
+  tags: ["raw", "schedule_daily"],
   type: "view",
   schema: "postcard_company_raw",
   description: "Raw channels extracted from source with load timestamp"

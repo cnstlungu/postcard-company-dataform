@@ -1,5 +1,5 @@
 config {
-  tags: ["core", "dim"],
+  tags: ["core", "dim", "schedule_daily"],
   type: "table",
   schema: "postcard_company_core",
   description: "Date dimension — every calendar day from 2015-01-01 to 2030-12-31 with week/month/quarter/year attributes",

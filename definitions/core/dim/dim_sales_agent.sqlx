@@ -1,5 +1,5 @@
 config {
-  tags: ["core", "dim"],
+  tags: ["core", "dim", "schedule_daily"],
   type: "table",
   schema: "postcard_company_core",
   description: "Sales agent dimension — resellers plus a synthetic 'Direct Sales' row (key = 0)",

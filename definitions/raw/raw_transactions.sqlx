@@ -1,5 +1,5 @@
 config {
-  tags: ["raw"],
+  tags: ["raw", "schedule_daily"],
   type: "view",
   schema: "postcard_company_raw",
   description: "Raw transactions from the direct (main) sales channel with load timestamp"

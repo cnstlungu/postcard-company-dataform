@@ -1,5 +1,5 @@
 config {
-  tags: ["sources"],
+  tags: ["sources", "schedule_daily"],
   type: "operations",
   schema: "postcard_company_raw_input",
   name: "resellers_type2",

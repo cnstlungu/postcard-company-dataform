@@ -1,5 +1,5 @@
 config {
-  tags: ["core", "dim"],
+  tags: ["core", "dim", "schedule_daily"],
   type: "operations",
   schema: "postcard_company_core",
   name: "dim_product",

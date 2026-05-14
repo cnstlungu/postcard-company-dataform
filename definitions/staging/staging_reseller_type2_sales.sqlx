@@ -1,5 +1,5 @@
 config {
-  tags: ["staging", "incremental"],
+  tags: ["staging", "incremental", "schedule_daily"],
   type: "incremental",
   schema: "postcard_company_staging",
   description: "Incremental staging of Reseller Type 2 sales — joined to dims for keys, commission calculated",

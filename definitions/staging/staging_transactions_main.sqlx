@@ -1,5 +1,5 @@
 config {
-  tags: ["staging", "incremental"],
+  tags: ["staging", "incremental", "schedule_daily"],
   type: "incremental",
   schema: "postcard_company_staging",
   description: "Incremental staging of direct-channel transactions — joined to dims for keys",

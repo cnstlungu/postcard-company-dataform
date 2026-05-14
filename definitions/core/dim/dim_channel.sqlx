@@ -1,5 +1,5 @@
 config {
-  tags: ["core", "dim"],
+  tags: ["core", "dim", "schedule_daily"],
   type: "table",
   schema: "postcard_company_core",
   description: "Channel dimension — sales channels (in-store, web, mobile app)",

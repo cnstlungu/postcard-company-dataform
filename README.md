@@ -147,6 +147,43 @@ dataform run --full-refresh --actions postcard_company_staging.staging_reseller_
 
 ```
 
+### 7. Schedule the pipeline
+
+In BigQuery Dataform, create a workflow configuration that runs the daily schedule tag:
+
+```text
+Tag: schedule_daily
+Include dependencies: true
+Include dependents: false
+Full refresh: false
+```
+
+The `schedule_daily` tag is applied across the build definitions so the daily workflow can be selected directly by tag. Dataform still respects the DAG order, so the scheduled run builds the warehouse layers:
+
+```text
+sources -> raw -> staging -> core
+```
+
+Assertions keep only the `assertions` tag. If you want a separate validation workflow after the daily build, schedule or trigger:
+
+```text
+Tag: assertions
+Include dependencies: true
+Include dependents: false
+Full refresh: false
+```
+
+Use a manual full-refresh workflow with the same tag when you need to rebuild incremental tables:
+
+```text
+Tag: schedule_daily
+Include dependencies: true
+Include dependents: false
+Full refresh: true
+```
+
+Note: `dim_product` is implemented as an operations-based SCD2 table, so a full refresh does not automatically reset its history. Drop and recreate it intentionally if you need a clean product dimension rebuild.
+
 ---
 
 ## Local development
