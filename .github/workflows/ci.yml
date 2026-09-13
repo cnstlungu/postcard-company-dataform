@@ -23,5 +23,8 @@ jobs:
       - name: Install Dataform CLI
         run: npm install -g @dataform/cli
 
+      - name: Create workflow settings
+        run: cp workflow_settings.yaml.example workflow_settings.yaml
+
       - name: Compile
         run: dataform compile

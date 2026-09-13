@@ -1,4 +1,8 @@
 node_modules/
+
+# Carries the real GCP project and bucket; copy it from
+# workflow_settings.yaml.example and edit locally.
+workflow_settings.yaml
 .dataform/
 .df-credentials.json
 .env

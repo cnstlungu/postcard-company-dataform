@@ -4,13 +4,26 @@ from pyarrow import Table
 import pyarrow.parquet as pq
 import os
 from faker import Faker
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import itertools
+import random
+
+# Seed both generators so a run is reproducible. Change SEED to get a
+# different but equally repeatable dataset.
+SEED = int(os.environ.get('SEED', 42))
+random.seed(SEED)
+Faker.seed(SEED)
 
 fake = Faker()
 
 # Global transaction ID counter for all generated transactions
 transaction_id_counter = itertools.count(0)
+
+# Sales land in a window ending today rather than at a hard-coded past date,
+# so the dashboards show current data whenever the pipeline is run.
+DATA_WINDOW_MONTHS = int(os.environ.get('DATA_WINDOW_MONTHS', 24))
+DATA_END = datetime.combine(date.today(), datetime.min.time())
+DATA_START = DATA_END - timedelta(days=round(DATA_WINDOW_MONTHS * 30.44))
 
 # --- Assets & Constants moved from assets.py ---
 
@@ -33,7 +46,7 @@ def get_channel_distribution(channel):
     elif channel == 'reseller':
         return [*1*('in-store',), *3*('web',), *3*('mobile app',) ]
 
-def random_date(start=datetime(2019,1,1), end=datetime(2021,1,31)):
+def random_date(start=DATA_START, end=DATA_END):
     """Generate a random datetime between `start` and `end`"""
     result =  start + timedelta(
         # Get a random amount of seconds between `start` and `end`

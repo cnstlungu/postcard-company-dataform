@@ -69,7 +69,14 @@ gcloud auth application-default login
 
 ### 2. Configure the project
 
-Edit `workflow_settings.yaml` with your GCP project ID and GCS bucket path:
+`workflow_settings.yaml` is not tracked, because it ends up holding your real
+project and bucket. Copy the template and edit your copy:
+
+```bash
+cp workflow_settings.yaml.example workflow_settings.yaml
+```
+
+Then set your GCP project ID and GCS bucket path:
 
 ```yaml
 defaultProject: your-gcp-project-here
