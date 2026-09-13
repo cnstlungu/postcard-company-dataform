@@ -2,13 +2,13 @@ config {
   tags: ["core", "dim", "schedule_daily"],
   type: "table",
   schema: "postcard_company_core",
-  description: "Date dimension — every calendar day from 2015-01-01 to 2030-12-31 with week/month/quarter/year attributes",
+  description: "Date dimension — every calendar day in the range declared by includes/calendar.js, with week/month/quarter/year attributes. The generator refuses to produce sales outside the same range.",
   uniqueKey: ["date_key"]
 }
 
 WITH generate_date AS (
   SELECT date_value
-  FROM UNNEST(GENERATE_DATE_ARRAY(DATE '2015-01-01', DATE '2030-12-31', INTERVAL 1 DAY)) AS date_value
+  FROM UNNEST(GENERATE_DATE_ARRAY(DATE '${calendar.CALENDAR_START}', DATE '${calendar.CALENDAR_END}', INTERVAL 1 DAY)) AS date_value
 )
 
 SELECT

@@ -28,3 +28,54 @@ jobs:
 
       - name: Compile
         run: dataform compile
+
+      - name: dim_date covers the range the generator enforces
+        run: |
+          dataform compile --json > /tmp/compiled.json
+          python3 - <<'PY'
+          import json, re, sys
+          from pathlib import Path
+
+          bounds = re.findall(
+              r"^CALENDAR_(?:START|END) = date\((\d+), (\d+), (\d+)\)",
+              Path("generator/generate.py").read_text(), re.M,
+          )
+          if len(bounds) != 2:
+              sys.exit("could not read CALENDAR_START/END from generator/generate.py")
+          start, end = ("%04d-%02d-%02d" % tuple(map(int, b)) for b in bounds)
+
+          compiled = json.load(open("/tmp/compiled.json"))
+          query = next(
+              t["query"] for t in compiled["tables"] if t["target"]["name"] == "dim_date"
+          )
+          array = re.search(r"GENERATE_DATE_ARRAY\([^)]*\)", query).group(0)
+          expected = "GENERATE_DATE_ARRAY(DATE '%s', DATE '%s', INTERVAL 1 DAY)" % (start, end)
+          if array != expected:
+              sys.exit(
+                  "dim_date and the generator disagree about the calendar.\n"
+                  "  generator/generate.py: %s\n"
+                  "  compiled dim_date:     %s\n"
+                  "Sales outside dim_date fail assert_fact_sales_date_key_valid."
+                  % (expected, array)
+              )
+          print("dim_date and the generator agree on %s..%s" % (start, end))
+          PY
+
+  generator:
+    name: Generator
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install generator requirements
+        run: pip install -r generator/requirements.txt
+
+      - name: Regression checks
+        run: python generator/checks.py

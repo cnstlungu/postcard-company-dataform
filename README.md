@@ -112,7 +112,7 @@ Output lands in `generator/output/`. The generator produces:
 
 | File | Rows | Description |
 |---|---|---|
-| `main.parquet` | 100,000 | Direct sales transactions (configurable via `N_TRANSACTIONS`) |
+| `main.parquet` | 1,000,000 | Direct sales transactions (see `N_TRANSACTIONS` below) |
 | `resellers_type1.parquet` | 100,000 | 2 resellers × 50,000 transactions each |
 | `resellers_type2.parquet` | 100,000 | 2 resellers × 50,000 transactions each |
 | `customers.parquet` | 100,000 | Direct customer records |
@@ -120,12 +120,46 @@ Output lands in `generator/output/`. The generator produces:
 | `channels.parquet` | 3 | Sales channels |
 | `resellers.parquet` | 4 | Reseller reference data |
 
-After a full pipeline run, `fact_sales` contains ~210,000 rows.
+`fact_sales` holds one row per source transaction, so a full pipeline run
+produces `N_TRANSACTIONS` + 200,000 rows.
 
-To override the number of direct transactions:
+#### Generator settings
+
+All four are environment variables, and all have defaults — the generator runs
+with none of them set.
+
+| Variable | Default | Effect |
+|---|---|---|
+| `SEED` | `42` | Seeds `random` and `Faker`. Change it for a different but equally repeatable dataset. |
+| `N_TRANSACTIONS` | `1000000` | Direct sales transactions. The reseller feeds are a fixed 100,000 rows each. |
+| `DATA_WINDOW_MONTHS` | `24` | How far back the sales window reaches from `DATA_END_DATE`. |
+| `DATA_END_DATE` | today | Last day of the sales window, inclusive. Pin it to an ISO date to reproduce an earlier dataset. |
 
 ```bash
+# A smaller dataset for a quick run.
 N_TRANSACTIONS=50000 python generator/generate.py
+
+# Exactly the dataset that a run on 13 September 2026 produced.
+SEED=42 DATA_END_DATE=2026-09-13 python generator/generate.py
+```
+
+`SEED` on its own is not enough to reproduce a dataset. The sales window ends on
+`DATA_END_DATE`, which defaults to today, so the same seed yields different dates
+on different days. Pin `DATA_END_DATE` as well and the parquet files come out
+byte for byte identical.
+
+The window also has to stay inside `dim_date`, whose range is declared once in
+[`includes/calendar.js`](includes/calendar.js) and mirrored by `CALENDAR_START` /
+`CALENDAR_END` in the generator. Sales outside that calendar would produce
+`fact_sales` rows whose `bought_date_key` joins to nothing and fail
+`assert_fact_sales_date_key_valid`, so the generator refuses to run and names the
+setting to change. To model a longer history, widen the calendar in both files —
+CI checks that they, and the compiled `dim_date`, agree.
+
+To check the generator after changing it:
+
+```bash
+python generator/checks.py
 ```
 
 ### 5. Upload Parquet files to GCS
@@ -200,7 +234,7 @@ dataform compile   # validates SQL structure and ref() resolution — no BigQuer
 dataform test      # runs unit tests against BigQuery using mock input data — requires credentials
 ```
 
-`dataform compile` is safe to run anywhere with no credentials. The CI pipeline runs compile only on every push for this reason. `dataform test` requires a live BigQuery connection but executes against inline mock data, so no production tables are read or written.
+`dataform compile` is safe to run anywhere with no credentials, which is why CI compiles on every push rather than running the pipeline. Alongside it CI checks that the compiled `dim_date` covers the range the generator enforces, and runs `python generator/checks.py` over freshly generated data. `dataform test` requires a live BigQuery connection but executes against inline mock data, so no production tables are read or written.
 
 ---
 
@@ -211,6 +245,7 @@ dataform test      # runs unit tests against BigQuery using mock input data — 
 ├── workflow_settings.yaml      # Project config: GCP project, location, vars
 ├── .env.example                # Environment variable reference
 ├── includes/
+│   ├── calendar.js             # The calendar range dim_date materialises
 │   └── helpers.js              # Surrogate key utility
 ├── definitions/
 │   ├── sources/                # External tables over GCS Parquet (raw_input layer)
@@ -224,5 +259,6 @@ dataform test      # runs unit tests against BigQuery using mock input data — 
 │   └── tests/                  # Unit tests
 └── generator/
     ├── generate.py             # Fake data generator (Faker + PyArrow)
+    ├── checks.py               # Regression checks for the generated data
     └── requirements.txt
 ```
