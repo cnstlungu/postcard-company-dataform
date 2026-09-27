@@ -10,3 +10,4 @@ generator/output/
 local_configure.sh
 .venv/
 venv/
+.DS_Store

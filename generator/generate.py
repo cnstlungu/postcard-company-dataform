@@ -104,7 +104,7 @@ for i in range(500):
 
 # --- Generators ---
 
-def generate_main(n=1000000):
+def generate_main(n=100000):
     print('Generating transactions')
 
     trans = []
@@ -263,7 +263,10 @@ def generate_parquet_file(name, records):
     table = Table.from_pandas(df)
     pq.write_table(table, os.path.join(OUTPUT_DIR, f"{name}.parquet"))
 
-n_transactions = int(os.environ.get('N_TRANSACTIONS', 1000000))
+# 100,000 keeps this in step with postcard-company-datamart, which shares
+# this generator, and with the demo size the portable-data-stack repos
+# advertise. A million rows is a BigQuery bill, not a first run.
+n_transactions = int(os.environ.get('N_TRANSACTIONS', 100000))
 
 generate_main(n=n_transactions)
 generate_channels()
