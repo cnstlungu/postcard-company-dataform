@@ -112,7 +112,7 @@ Output lands in `generator/output/`. The generator produces:
 
 | File | Rows | Description |
 |---|---|---|
-| `main.parquet` | 1,000,000 | Direct sales transactions (see `N_TRANSACTIONS` below) |
+| `main.parquet` | 100,000 | Direct sales transactions (see `N_TRANSACTIONS` below) |
 | `resellers_type1.parquet` | 100,000 | 2 resellers × 50,000 transactions each |
 | `resellers_type2.parquet` | 100,000 | 2 resellers × 50,000 transactions each |
 | `customers.parquet` | 100,000 | Direct customer records |
@@ -131,7 +131,7 @@ with none of them set.
 | Variable | Default | Effect |
 |---|---|---|
 | `SEED` | `42` | Seeds `random` and `Faker`. Change it for a different but equally repeatable dataset. |
-| `N_TRANSACTIONS` | `1000000` | Direct sales transactions. The reseller feeds are a fixed 100,000 rows each. |
+| `N_TRANSACTIONS` | `100000` | Direct sales transactions. The reseller feeds are a fixed 100,000 rows each. |
 | `DATA_WINDOW_MONTHS` | `24` | How far back the sales window reaches from `DATA_END_DATE`. |
 | `DATA_END_DATE` | today | Last day of the sales window, inclusive. Pin it to an ISO date to reproduce an earlier dataset. |
 
