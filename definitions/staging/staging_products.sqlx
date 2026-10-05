@@ -1,16 +1,25 @@
 config {
+  type: "table",
+  schema: dataform.projectConfig.defaultSchema + "_staging",
   tags: ["staging", "schedule_daily"],
-  type: "view",
-  schema: "postcard_company_staging",
-  description: "Staged products — deduplicated, surrogate key, geography join"
+  description: "Product catalogue joined to geography, deduplicated to the latest row per product_id.",
+  columns: {
+    product_key: "Surrogate key for the product."
+  },
+  assertions: {
+    uniqueKeys: [["product_key"]],
+    nonNull: ["product_key"]
+  }
 }
 
 SELECT
   product_id,
-  ${helpers.generate_surrogate_key(['product_id'])} AS product_key,
-  name         AS product_name,
-  g.id         AS geography_key,
-  price        AS product_price
-FROM ${ref("postcard_company_raw", "raw_products")} e
-LEFT JOIN ${ref("postcard_company_raw", "geography")} g ON g.cityname = e.city
-QUALIFY ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY e.loaded_timestamp DESC) = 1
+  ${dbt_utils.generate_surrogate_key(["product_id"])} AS product_key,
+  name AS product_name,
+  g.id AS geography_key,
+  price AS product_price
+FROM ${ref("raw_products")} AS e
+LEFT JOIN ${ref("geography")} AS g
+  ON g.cityname = e.city
+QUALIFY
+  ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY e.loaded_timestamp DESC) = 1

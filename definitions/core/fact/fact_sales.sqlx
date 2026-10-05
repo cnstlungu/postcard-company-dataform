@@ -1,32 +1,51 @@
 config {
-  tags: ["core", "fact", "incremental", "schedule_daily"],
   type: "incremental",
-  schema: "postcard_company_core",
-  description: "Sales fact table — grain is one row per transaction per sales agent. transaction_id is a degenerate dimension (carried from source, no corresponding dim table). product_price is stored at time of sale deliberately — it captures the price that was charged, which may differ from the current price in dim_product.",
+  schema: dataform.projectConfig.defaultSchema + "_core",
+  tags: ["core", "schedule_daily"],
+  description: "One row per sale, unioned from direct sales and both reseller feeds. Grain is one transaction per sales agent, so sales_key is the surrogate key over (sales_agent_key, transaction_id).",
+  columns: {
+    sales_key: "Surrogate key over (sales_agent_key, transaction_id). Unique because transaction_id is globally unique across sources.",
+    bought_date_key: "Integer date of the sale in YYYYMMDD form. Tested against dim_date so that a sale generated outside the calendar fails the build instead of quietly dropping out of every date-based report.",
+    commissionpaid: "Commission value on this sale. Null for direct sales.",
+    commissionpct: "Commission rate for the selling agent. Null for direct sales, which pay no commission.",
+    total_amount: "Gross line value: quantity multiplied by the product price at time of sale.",
+    transaction_id: "Transaction identifier from the source system. Unique across all three feeds."
+  },
   uniqueKey: ["sales_key"],
+  onSchemaChange: "FAIL",
+  assertions: {
+    uniqueKeys: [["sales_key"]],
+    nonNull: [
+      "bought_date_key",
+      "channel_key",
+      "customer_key",
+      "geography_key",
+      "product_key",
+      "qty",
+      "sales_key",
+      "total_amount"
+    ]
+  },
   bigquery: {
-    partitionBy: "DATE_TRUNC(transaction_date, MONTH)",
+    partitionBy: "RANGE_BUCKET(bought_date_key, GENERATE_ARRAY(20100101, 20360101, 10000))",
     clusterBy: ["channel_key", "sales_agent_key"]
   }
 }
 
 SELECT
-  ${helpers.generate_surrogate_key(['sa.sales_agent_key', 't.transaction_id'])} AS sales_key,
-  t.customer_key,
-  t.transaction_id,
-  t.product_key,
-  t.channel_key,
-  t.bought_date_key,
-  t.geography_key,
-  sa.sales_agent_key,
-  t.total_amount,
-  t.qty,
-  t.commissionpct,
-  t.commissionpaid,
-  t.product_price,
-  t.transaction_date,
-  t.loaded_timestamp
-FROM ${ref("postcard_company_staging", "staging_transactions")} t
-LEFT JOIN ${ref("postcard_company_core", "dim_sales_agent")} sa ON t.reseller_id = sa.original_reseller_id
-${when(incremental(), `WHERE t.loaded_timestamp > (SELECT MAX(t2.loaded_timestamp) FROM ${self()} t2)`)}
-QUALIFY ROW_NUMBER() OVER (PARTITION BY sales_key ORDER BY transaction_date DESC) = 1
+  ${dbt_utils.generate_surrogate_key(["sales_agent_key", "transaction_id"])} AS sales_key,
+  customer_key,
+  transaction_id,
+  product_key,
+  channel_key,
+  bought_date_key,
+  geography_key,
+  sales_agent_key,
+  total_amount,
+  qty,
+  commissionpct,
+  commissionpaid,
+  product_price
+FROM ${ref("staging_transactions")} AS t
+LEFT JOIN ${ref("dim_sales_agent")} AS sa
+  ON t.reseller_id = sa.original_reseller_id

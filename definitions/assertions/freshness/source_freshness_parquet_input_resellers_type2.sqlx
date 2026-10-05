@@ -1,0 +1,11 @@
+config {
+  type: "assertion",
+  name: "source_freshness_parquet_input_resellers_type2",
+  tags: ["source_freshness", "assertions"],
+  description: "Port of `dbt source freshness` for parquet_input.resellers_type2: fails when the newest row is older than 7 day(s)."
+}
+
+-- dbt source freshness, error_after 7 day(s).
+SELECT MAX(CAST(CAST(Created_Date AS DATETIME) AS TIMESTAMP)) AS max_loaded_at
+FROM ${ref("parquet_input", "resellers_type2")}
+HAVING MAX(CAST(CAST(Created_Date AS DATETIME) AS TIMESTAMP)) < TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)

@@ -1,10 +1,11 @@
 config {
-  tags: ["assertions"],
   type: "assertion",
-  description: "commission_pct must be between 0 and 1 (exclusive of NULL, which is valid for direct sales)"
+  name: "assert_commission_pct_valid",
+  tags: ["assertions"]
 }
 
-SELECT *
-FROM ${ref("postcard_company_core", "dim_sales_agent")}
-WHERE commission_pct IS NOT NULL
-  AND (commission_pct < 0 OR commission_pct > 1)
+SELECT
+  *
+FROM ${ref("dim_sales_agent")}
+WHERE
+  commission_pct < 0 OR commission_pct > 1

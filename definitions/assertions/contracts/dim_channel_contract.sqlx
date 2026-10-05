@@ -1,0 +1,28 @@
+config {
+  type: "assertion",
+  name: "dim_channel_contract",
+  tags: ["contract", "assertions"],
+  description: "Port of the dbt model contract on dim_channel. dbt checks it before building; this checks the built table."
+}
+
+-- dbt enforced a contract on this model: exactly these columns, with these types.
+WITH expected AS (
+  SELECT * FROM UNNEST([
+    STRUCT('channel_key' AS column_name, 'INT64' AS data_type),
+    STRUCT('channel_name' AS column_name, 'STRING' AS data_type),
+    STRUCT('original_channel_id' AS column_name, 'INT64' AS data_type)
+  ])
+),
+
+actual AS (
+  SELECT column_name, data_type
+  FROM ${dbt2dataform.information_schema_columns(ref("dim_channel"))}
+)
+
+SELECT
+  COALESCE(e.column_name, a.column_name) AS column_name,
+  e.data_type AS expected_type,
+  a.data_type AS actual_type
+FROM expected AS e
+FULL OUTER JOIN actual AS a ON LOWER(e.column_name) = LOWER(a.column_name)
+WHERE e.column_name IS NULL OR a.column_name IS NULL OR e.data_type != a.data_type

@@ -1,8 +1,8 @@
 config {
+  type: "table",
+  schema: dataform.projectConfig.defaultSchema + "_raw",
   tags: ["raw", "schedule_daily"],
-  type: "view",
-  schema: "postcard_company_raw",
-  description: "Raw customers extracted from source with load timestamp"
+  description: "Passthrough of the direct-customer extract, with a load timestamp."
 }
 
 SELECT
@@ -16,4 +16,4 @@ SELECT
   country,
   postal_code,
   CURRENT_TIMESTAMP() AS loaded_timestamp
-FROM ${ref("postcard_company_raw_input", "customers")}
+FROM ${ref("parquet_input", "customers")}

@@ -1,9 +1,20 @@
 config {
-  tags: ["core", "dim", "schedule_daily"],
   type: "table",
-  schema: "postcard_company_core",
-  description: "Customer dimension — unified across direct sales and two reseller channels. Grain: one row per (source_channel, identifier), where identifier is customer_id for direct sales and (reseller_id, email) for reseller channels. True cross-channel deduplication by person would require a Master Data Management (MDM) layer outside this pipeline.",
-  uniqueKey: ["customer_key"]
+  schema: dataform.projectConfig.defaultSchema + "_core",
+  tags: ["core", "schedule_daily"],
+  description: "Customers unified across all three sources. Direct customers key off their source customer_id; reseller customers have no stable identifier, so they key off (reseller_id, email).",
+  columns: {
+    customer_key: "Surrogate key. Derived from (0, customer_id) for direct customers and (reseller_id, email) for reseller customers."
+  },
+  assertions: {
+    uniqueKeys: [["customer_key"]],
+    nonNull: ["customer_email", "customer_key"]
+  }
+}
+
+post_operations {
+  ALTER TABLE ${self()} DROP PRIMARY KEY IF EXISTS;
+  ALTER TABLE ${self()} ADD PRIMARY KEY (customer_key) NOT ENFORCED
 }
 
 SELECT
@@ -18,5 +29,4 @@ SELECT
   customer_country,
   customer_postal_code,
   sales_agent_key
-FROM ${ref("postcard_company_staging", "staging_customers")}
-QUALIFY ROW_NUMBER() OVER (PARTITION BY customer_key ORDER BY (SELECT NULL)) = 1
+FROM ${ref("staging_customers")}

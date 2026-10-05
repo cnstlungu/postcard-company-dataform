@@ -1,0 +1,16 @@
+config {
+  type: "operations",
+  schema: "parquet_input",
+  name: "resellers_type2",
+  description: "Sales from the resellers that report in camelCase with the customer nested in a struct. Carries the same facts as type 1 in a different shape, which is what the two staging models exist to reconcile.",
+  tags: ["sources", "schedule_daily"],
+  hasOutput: true
+}
+
+CREATE SCHEMA IF NOT EXISTS `${database()}.${schema()}`;
+
+CREATE OR REPLACE EXTERNAL TABLE ${self()}
+OPTIONS (
+  format = 'PARQUET',
+  uris = ['${dataform.projectConfig.vars.input_files_path}/resellers_type2.parquet']
+)

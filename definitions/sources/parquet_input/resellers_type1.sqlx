@@ -1,0 +1,16 @@
+config {
+  type: "operations",
+  schema: "parquet_input",
+  name: "resellers_type1",
+  description: "Sales from the resellers that report in a flat, human-titled layout (\"Customer First Name\", \"Total amount\"). Denormalised: the customer arrives inline on every sales row rather than as a key.",
+  tags: ["sources", "schedule_daily"],
+  hasOutput: true
+}
+
+CREATE SCHEMA IF NOT EXISTS `${database()}.${schema()}`;
+
+CREATE OR REPLACE EXTERNAL TABLE ${self()}
+OPTIONS (
+  format = 'PARQUET',
+  uris = ['${dataform.projectConfig.vars.input_files_path}/resellers_type1.parquet']
+)

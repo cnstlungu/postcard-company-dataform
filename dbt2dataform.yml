@@ -1,0 +1,34 @@
+# How scripts/regenerate.sh turns postcard-company-datamart's dbt project into
+# this Dataform project. See https://github.com/cnstlungu/dbt2dataform.
+
+# Placeholders, committed on purpose: pass your own at run time with
+#   dataform run --default-database <project> --vars input_files_path=gs://<bucket>/parquet
+default_project: your-gcp-project
+default_location: EU
+vars:
+  input_files_path: gs://your-bucket/parquet
+
+# Dataform config the dbt project cannot express, because it targets DuckDB.
+# A selector with a `/` matches the file path under definitions/; any other
+# selector matches the action name.
+overrides:
+  # Layer tags, plus `schedule_daily` on everything a daily run builds.
+  "sources/*": {tags: [sources, schedule_daily]}
+  "raw/*": {tags: [raw, schedule_daily]}
+  "seeds/*": {tags: [raw, schedule_daily]}
+  "staging/*": {tags: [staging, schedule_daily]}
+  "core/*": {tags: [core, schedule_daily]}
+  "assertions/*": {tags: [assertions]}
+
+  # The incremental tables carry their date only as bought_date_key, an
+  # INT64 like 20260913, so they are partitioned by integer range: one
+  # partition per year of the calendar dim_date covers (2010-2035).
+  staging_transactions_main: &by_year
+    bigquery:
+      partitionBy: RANGE_BUCKET(bought_date_key, GENERATE_ARRAY(20100101, 20360101, 10000))
+  staging_reseller_type1_sales: *by_year
+  staging_reseller_type2_sales: *by_year
+  fact_sales:
+    bigquery:
+      partitionBy: RANGE_BUCKET(bought_date_key, GENERATE_ARRAY(20100101, 20360101, 10000))
+      clusterBy: [channel_key, sales_agent_key]

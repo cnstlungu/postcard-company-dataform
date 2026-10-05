@@ -1,14 +1,14 @@
 config {
+  type: "table",
+  schema: dataform.projectConfig.defaultSchema + "_raw",
   tags: ["raw", "schedule_daily"],
-  type: "view",
-  schema: "postcard_company_raw",
-  description: "Raw products extracted from source with load timestamp"
+  description: "Passthrough of the product catalogue extract, with a load timestamp."
 }
 
 SELECT
   name,
-  TRIM(city) AS city,
+  city,
   price,
   product_id,
   CURRENT_TIMESTAMP() AS loaded_timestamp
-FROM ${ref("postcard_company_raw_input", "products")}
+FROM ${ref("parquet_input", "products")}

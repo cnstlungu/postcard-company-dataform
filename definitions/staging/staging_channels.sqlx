@@ -1,17 +1,23 @@
 config {
+  type: "table",
+  schema: dataform.projectConfig.defaultSchema + "_staging",
   tags: ["staging", "schedule_daily"],
-  type: "view",
-  schema: "postcard_company_staging",
-  description: "Staged channels — adds surrogate key alias"
+  description: "Channels typed and given their surrogate key.",
+  columns: {
+    channel_key: "Surrogate key for the channel."
+  },
+  assertions: {
+    uniqueKeys: [["channel_key"]],
+    nonNull: ["channel_key"]
+  }
 }
 
 WITH staging_channels AS (
   SELECT
     channel_id,
     channel_name
-  FROM ${ref("postcard_company_raw", "raw_channels")}
+  FROM ${ref("raw_channels")}
 )
-
 SELECT
   channel_id AS channel_key,
   channel_id AS original_channel_id,

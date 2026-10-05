@@ -1,0 +1,36 @@
+config {
+  type: "assertion",
+  name: "dim_customer_contract",
+  tags: ["contract", "assertions"],
+  description: "Port of the dbt model contract on dim_customer. dbt checks it before building; this checks the built table."
+}
+
+-- dbt enforced a contract on this model: exactly these columns, with these types.
+WITH expected AS (
+  SELECT * FROM UNNEST([
+    STRUCT('customer_key' AS column_name, 'STRING' AS data_type),
+    STRUCT('original_customer_id' AS column_name, 'INT64' AS data_type),
+    STRUCT('customer_first_name' AS column_name, 'STRING' AS data_type),
+    STRUCT('customer_last_name' AS column_name, 'STRING' AS data_type),
+    STRUCT('customer_email' AS column_name, 'STRING' AS data_type),
+    STRUCT('customer_phone' AS column_name, 'STRING' AS data_type),
+    STRUCT('customer_address' AS column_name, 'STRING' AS data_type),
+    STRUCT('customer_city' AS column_name, 'STRING' AS data_type),
+    STRUCT('customer_country' AS column_name, 'STRING' AS data_type),
+    STRUCT('customer_postal_code' AS column_name, 'STRING' AS data_type),
+    STRUCT('sales_agent_key' AS column_name, 'INT64' AS data_type)
+  ])
+),
+
+actual AS (
+  SELECT column_name, data_type
+  FROM ${dbt2dataform.information_schema_columns(ref("dim_customer"))}
+)
+
+SELECT
+  COALESCE(e.column_name, a.column_name) AS column_name,
+  e.data_type AS expected_type,
+  a.data_type AS actual_type
+FROM expected AS e
+FULL OUTER JOIN actual AS a ON LOWER(e.column_name) = LOWER(a.column_name)
+WHERE e.column_name IS NULL OR a.column_name IS NULL OR e.data_type != a.data_type

@@ -1,0 +1,11 @@
+config {
+  type: "assertion",
+  name: "total_amount_is_non_negative",
+  tags: ["assertions"]
+}
+
+SELECT
+  *
+FROM ${ref("fact_sales")}
+WHERE
+  total_amount <= 0.00

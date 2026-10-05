@@ -1,49 +1,76 @@
 config {
-  tags: ["staging", "incremental", "schedule_daily"],
   type: "incremental",
-  schema: "postcard_company_staging",
-  description: "Incremental staging of Reseller Type 2 sales — joined to dims for keys, commission calculated",
-  uniqueKey: ["transaction_id"],
+  schema: dataform.projectConfig.defaultSchema + "_staging",
+  tags: ["staging", "schedule_daily"],
+  description: "Type 2 reseller sales, renamed and typed. Incremental on the (reseller_id, transaction_id) grain.",
+  columns: {
+    transaction_id: "Transaction identifier, unique only within a reseller.",
+    reseller_id: "Reseller this sale belongs to."
+  },
+  uniqueKey: ["reseller_id", "transaction_id"],
+  onSchemaChange: "FAIL",
+  assertions: {
+    uniqueKeys: [["reseller_id", "transaction_id"]],
+    nonNull: ["reseller_id", "transaction_id"]
+  },
   bigquery: {
-    partitionBy: "created_date"
+    partitionBy: "RANGE_BUCKET(bought_date_key, GENERATE_ARRAY(20100101, 20360101, 10000))"
   }
 }
 
-WITH trans_resellers AS (
+-- transaction_id is only unique within a reseller, so the grain of this model is
+-- the pair. Keying on transaction_id alone would let an incremental run collapse
+-- two resellers' rows into one.
+WITH latest_transaction AS (
   SELECT
-    ${helpers.generate_surrogate_key(['reseller_id', 'customer_email'])} AS customer_key,
-    product_name,
-    qty             AS quantity,
-    total_amount,
-    sales_channel,
+${when(incremental(), `    MAX(loaded_timestamp) AS max_transaction_timestamp
+  FROM ${self()}`, `    CAST('1900-01-01' AS DATETIME) AS max_transaction_timestamp`)}
+), trans_resellers AS (
+  SELECT
+    ${dbt_utils.generate_surrogate_key(["reseller_id", "customer_email"])} AS customer_key,
+    productName AS product_name,
+    qty AS quantity,
+    totalAmount AS total_amount,
+    salesChannel AS sales_channel,
+    customer_first_name,
+    customer_last_name,
     customer_email,
-    series_city,
-    CAST(created_date AS DATE)        AS created_date,
-    CAST(reseller_id AS INT64)        AS reseller_id,
-    CAST(transaction_id AS INT64)     AS transaction_id,
-    loaded_timestamp
-  FROM ${ref("postcard_company_raw", "raw_reseller_type2_sales")}
-  ${when(incremental(), `WHERE loaded_timestamp > (SELECT MAX(loaded_timestamp) FROM ${self()})`)}
-  QUALIFY ROW_NUMBER() OVER (PARTITION BY transaction_id ORDER BY loaded_timestamp DESC) = 1
+    seriesCity AS series_city,
+    Created_Date AS created_date,
+    reseller_id AS reseller_id,
+    `transactionID` AS transaction_id,
+    CURRENT_TIMESTAMP() AS loaded_timestamp
+  FROM ${ref("raw_reseller_type2_sales")}
+${when(incremental(), `  WHERE
+    loaded_timestamp > (
+      SELECT
+        max_transaction_timestamp
+      FROM latest_transaction
+      LIMIT 1
+    )`)}
 )
-
 SELECT
   t.customer_key,
-  t.transaction_id,
+  transaction_id,
+  t.product_name,
   p.product_key,
   c.channel_key,
   t.reseller_id,
-  CAST(FORMAT_DATE('%Y%m%d', t.created_date) AS INT64)     AS bought_date_key,
-  CAST(t.total_amount AS NUMERIC)                          AS total_amount,
-  CAST(t.quantity     AS INT64)                            AS quantity,
-  CAST(p.product_price AS NUMERIC)                         AS product_price,
+  CAST(FORMAT_DATE('%Y%m%d', CAST(created_date AS DATE)) AS INT64) AS bought_date_key,
+  CAST(total_amount AS NUMERIC) AS total_amount,
+  CAST(quantity AS INT64) AS quantity,
+  CAST(p.product_price AS NUMERIC) AS product_price,
   p.geography_key,
-  s.commission_pct * CAST(t.total_amount AS NUMERIC)       AS commissionpaid,
-  s.commission_pct                                         AS commissionpct,
-  t.created_date,
-  t.loaded_timestamp
-FROM trans_resellers t
-LEFT JOIN ${ref("postcard_company_core", "dim_product")}      p  ON t.product_name  = p.product_name AND p.is_current = TRUE
-LEFT JOIN ${ref("postcard_company_core", "dim_channel")}      c  ON t.sales_channel = c.channel_name
-LEFT JOIN ${ref("postcard_company_core", "dim_customer")}     cu ON t.customer_key  = cu.customer_key
-LEFT JOIN ${ref("postcard_company_core", "dim_sales_agent")}  s  ON t.reseller_id   = s.original_reseller_id
+  s.commission_pct * CAST(total_amount AS NUMERIC) AS commissionpaid,
+  s.commission_pct AS commissionpct,
+  loaded_timestamp,
+  created_date
+FROM trans_resellers AS t
+LEFT JOIN ${ref("dim_product")} AS p
+  ON t.product_name = p.product_name
+LEFT JOIN ${ref("dim_channel")} AS c
+  ON t.sales_channel = c.channel_name
+LEFT JOIN ${ref("dim_customer")} AS cu
+  ON t.customer_key = cu.customer_key
+LEFT JOIN ${ref("dim_sales_agent")} AS s
+  ON t.reseller_id = s.original_reseller_id

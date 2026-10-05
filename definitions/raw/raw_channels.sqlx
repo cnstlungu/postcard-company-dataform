@@ -1,12 +1,12 @@
 config {
+  type: "table",
+  schema: dataform.projectConfig.defaultSchema + "_raw",
   tags: ["raw", "schedule_daily"],
-  type: "view",
-  schema: "postcard_company_raw",
-  description: "Raw channels extracted from source with load timestamp"
+  description: "Passthrough of the channels extract, with a load timestamp. No business logic."
 }
 
 SELECT
   channel_name,
   CAST(channel_id AS INT64) AS channel_id,
   CURRENT_TIMESTAMP() AS loaded_timestamp
-FROM ${ref("postcard_company_raw_input", "channels")}
+FROM ${ref("parquet_input", "channels")}

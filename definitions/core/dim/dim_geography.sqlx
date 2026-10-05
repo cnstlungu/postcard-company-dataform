@@ -1,14 +1,22 @@
 config {
-  tags: ["core", "dim", "schedule_daily"],
   type: "table",
-  schema: "postcard_company_core",
-  description: "Geography dimension — 100 European cities with country and region",
-  uniqueKey: ["geography_key"]
+  schema: dataform.projectConfig.defaultSchema + "_core",
+  tags: ["core", "schedule_daily"],
+  description: "Cities the postcards depict, with country and region. Loaded from the geography seed rather than the generated data.",
+  assertions: {
+    uniqueKeys: [["geography_key"]],
+    nonNull: ["geography_key"]
+  }
+}
+
+post_operations {
+  ALTER TABLE ${self()} DROP PRIMARY KEY IF EXISTS;
+  ALTER TABLE ${self()} ADD PRIMARY KEY (geography_key) NOT ENFORCED
 }
 
 SELECT
-  id          AS geography_key,
-  cityname    AS city_name,
+  id AS geography_key,
+  cityname AS city_name,
   countryname AS country_name,
-  regionname  AS region_name
-FROM ${ref("postcard_company_raw", "geography")}
+  regionname AS region_name
+FROM ${ref("geography")}

@@ -2,9 +2,15 @@
 
 ![CI](https://github.com/cnstlungu/postcard-company-dataform/actions/workflows/ci.yml/badge.svg)
 
-A **Dataform v3** example project for an imaginary postcard company that sells directly and through resellers across Europe. It demonstrates real-world patterns for building a data warehouse on **BigQuery** using Dataform.
+A **Dataform v3** project on **BigQuery** for an imaginary postcard company that
+sells directly and through resellers across Europe.
 
-This project is the Dataform equivalent of [postcard-company-datamart](https://github.com/cnstlungu/postcard-company-datamart) (dbt-core + DuckDB).
+It is [postcard-company-datamart](https://github.com/cnstlungu/postcard-company-datamart)
+(dbt-core + DuckDB) converted to Dataform by
+[dbt2dataform](https://github.com/cnstlungu/dbt2dataform). Like the
+portable-data-stack repos (Airflow, Dagster, Mage, SQLMesh), it builds from a
+pinned datamart release, so the two cannot drift apart. CI regenerates the
+project from that release and fails if the committed files differ.
 
 > **Disclaimer:** This is an example project provided for educational purposes only, made available as-is without any warranties or guarantees. All data is artificially generated using the [Faker](https://faker.readthedocs.io/) library — any resemblance to real persons, companies, or transactions is purely coincidental. The project is not intended for production use.
 
@@ -12,14 +18,28 @@ This project is the Dataform equivalent of [postcard-company-datamart](https://g
 
 ## What it demonstrates
 
-- **Clear separation of concerns** across four layers: source ingestion (`raw_input`) is kept strictly separate from normalization (`raw`), business logic (`staging`), and consumption (`core`)
-- **GCS external tables defined in SQL** — source ingestion is part of the Dataform DAG, not a separate pipeline step. Includes both explicit schema and auto-detect patterns, with an explanation of when each applies
-- **Multi-source customer unification** — direct customers and two reseller types with different column schemas are merged and deduplicated into a single `dim_customer`, with surrogate keys derived from the appropriate source identifiers
-- **Incremental models done right** — `uniqueKey`, watermark-based filtering, `QUALIFY ROW_NUMBER()` deduplication to handle late-arriving duplicates, BigQuery partitioning and clustering
-- **No external dependencies for surrogate keys** — `TO_HEX(MD5(...))` implemented once in `includes/helpers.js`, no packages required
-- **Unambiguous `ref()` calls** — every reference uses the two-argument `ref("dataset", "table")` form, preventing silent resolution errors when table names collide across layers
-- **Unit tests** — `dataform test` executes model logic against mock input tables in BigQuery; a live connection is required but no production data is touched
-- **Zero hardcoded configuration** — GCP project and GCS path are driven by `workflow_settings.yaml` vars, keeping the repo clean to commit and share
+- **The same warehouse as the dbt project, on BigQuery.** The conversion was
+  checked by running it against the same generated files as dbt on DuckDB.
+  All 23 tables matched row for row, both after a full build and after an
+  incremental run.
+- **GCS external tables defined in SQL.** Ingestion is part of the Dataform
+  DAG: one `operations` action per Parquet file, with `hasOutput: true` so the
+  rest of the project can `ref()` it.
+- **Incremental tables.** `uniqueKey` MERGEs, `onSchemaChange`, and
+  `${when(incremental(), ...)}` branches that filter on a watermark of the
+  table's own contents.
+- **Partitioning and clustering.** The incremental tables carry their date as
+  `bought_date_key` (`20260913`), so they use integer-range partitioning, one
+  partition per year.
+- **Data quality.** dbt's tests become built-in assertions (`uniqueKeys`,
+  `nonNull`, `rowConditions`) or assertion files. dbt's model contracts become
+  assertions on `INFORMATION_SCHEMA.COLUMNS`, plus unenforced primary keys. Source
+  freshness becomes an assertion too.
+- **Surrogate keys identical to dbt's.** `includes/dbt_utils.js` reproduces
+  `dbt_utils.generate_surrogate_key` exactly, so a key computed here matches
+  the one dbt computes for the same row.
+- **No hardcoded configuration.** The committed `workflow_settings.yaml` holds
+  placeholders. Your GCP project and bucket are passed in at run time.
 
 ---
 
@@ -31,10 +51,11 @@ This project is the Dataform equivalent of [postcard-company-datamart](https://g
 
 | Layer | Dataset | Description |
 |---|---|---|
-| `raw_input` | `postcard_company_raw_input` | External tables over GCS Parquet files |
-| `raw` | `postcard_company_raw` | Views that normalize column names and add `loaded_timestamp` |
-| `staging` | `postcard_company_staging` | Cleaned, typed, deduplicated, surrogate-keyed models |
-| `core` | `postcard_company_core` | Dimensions and fact table ready for consumption |
+| sources | `parquet_input` | External tables over the Parquet files in GCS |
+| raw | `postcard_company_raw` | Tables that rename columns and add `loaded_timestamp`, plus the `geography` seed |
+| staging | `postcard_company_staging` | Cleaned, typed, deduplicated, surrogate-keyed models |
+| core | `postcard_company_core` | Dimensions and the fact table |
+| assertions | `postcard_company_assertions` | Data quality checks |
 
 ### Dimensions
 - `dim_channel`
@@ -45,17 +66,19 @@ This project is the Dataform equivalent of [postcard-company-datamart](https://g
 - `dim_sales_agent`
 
 ### Facts
-- `fact_sales` — incremental, partitioned by month, clustered by channel and sales agent
+- `fact_sales`: incremental, partitioned by year of `bought_date_key`, clustered
+  by channel and sales agent
 
 ---
 
 ## Prerequisites
 
-- [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) (`gcloud` + `gsutil`)
-- [Dataform CLI](https://cloud.google.com/dataform/docs/use-dataform-cli) installed (`npm i -g @dataform/cli`)
-- A GCP project with BigQuery enabled
-- A GCS bucket to store the Parquet source files
-- Python 3.10+ (for the data generator)
+- [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) (`gcloud`, `bq`)
+- [Dataform CLI](https://cloud.google.com/dataform/docs/use-dataform-cli) **3.0.71**
+  or newer: `npm i -g @dataform/cli@3.0.71`. Older CLIs silently ignore
+  `onSchemaChange`.
+- A GCP project with BigQuery enabled, and a GCS bucket for the Parquet files
+- Docker, to run the datamart's data generator
 
 ---
 
@@ -67,26 +90,9 @@ This project is the Dataform equivalent of [postcard-company-datamart](https://g
 gcloud auth application-default login
 ```
 
-### 2. Configure the project
+### 2. Set up Dataform credentials
 
-`workflow_settings.yaml` is not tracked, because it ends up holding your real
-project and bucket. Copy the template and edit your copy:
-
-```bash
-cp workflow_settings.yaml.example workflow_settings.yaml
-```
-
-Then set your GCP project ID and GCS bucket path:
-
-```yaml
-defaultProject: your-gcp-project-here
-vars:
-  gcs_parquet_path: gs://your-bucket-here/parquet
-```
-
-### 3. Set up Dataform credentials
-
-Create `.df-credentials.json` in the project root:
+Create `.df-credentials.json` in the project root (it is gitignored):
 
 ```json
 {
@@ -95,102 +101,62 @@ Create `.df-credentials.json` in the project root:
 }
 ```
 
-> Change `location` to match where your BigQuery datasets should be created.
+### 3. Generate the source data
 
-### 4. Generate source data
-
-```bash
-cd generator
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python generate.py
-cd ..
-```
-
-Output lands in `generator/output/`. The generator produces:
-
-| File | Rows | Description |
-|---|---|---|
-| `main.parquet` | 100,000 | Direct sales transactions (see `N_TRANSACTIONS` below) |
-| `resellers_type1.parquet` | 100,000 | 2 resellers × 50,000 transactions each |
-| `resellers_type2.parquet` | 100,000 | 2 resellers × 50,000 transactions each |
-| `customers.parquet` | 100,000 | Direct customer records |
-| `products.parquet` | 500 | Product catalogue |
-| `channels.parquet` | 3 | Sales channels |
-| `resellers.parquet` | 4 | Reseller reference data |
-
-`fact_sales` holds one row per source transaction, so a full pipeline run
-produces `N_TRANSACTIONS` + 200,000 rows.
-
-#### Generator settings
-
-All four are environment variables, and all have defaults — the generator runs
-with none of them set.
-
-| Variable | Default | Effect |
-|---|---|---|
-| `SEED` | `42` | Seeds `random` and `Faker`. Change it for a different but equally repeatable dataset. |
-| `N_TRANSACTIONS` | `100000` | Direct sales transactions. The reseller feeds are a fixed 100,000 rows each. |
-| `DATA_WINDOW_MONTHS` | `24` | How far back the sales window reaches from `DATA_END_DATE`. |
-| `DATA_END_DATE` | today | Last day of the sales window, inclusive. Pin it to an ISO date to reproduce an earlier dataset. |
+The data comes from the datamart's generator, built straight from the release
+this project is generated from:
 
 ```bash
-# A smaller dataset for a quick run.
-N_TRANSACTIONS=50000 python generator/generate.py
-
-# Exactly the dataset that a run on 13 September 2026 produced.
-SEED=42 DATA_END_DATE=2026-09-13 python generator/generate.py
+docker build -t postcard-generator \
+  "https://github.com/cnstlungu/postcard-company-datamart.git#v1.3.0:generator"
+docker run --rm -e INPUT_FILES_PATH=/data -v "$PWD/data:/data" postcard-generator
 ```
 
-`SEED` on its own is not enough to reproduce a dataset. The sales window ends on
-`DATA_END_DATE`, which defaults to today, so the same seed yields different dates
-on different days. Pin `DATA_END_DATE` as well and the parquet files come out
-byte for byte identical.
+It writes seven Parquet files to `data/`: 100,000 direct sales, two reseller
+feeds of 100,000 rows each, and the customers, products, channels and
+resellers they refer to. Pass `-e N_TRANSACTIONS=...`, `-e SEED=...`,
+`-e DATA_WINDOW_MONTHS=...` or `-e DATA_END_DATE=...` to change the size,
+randomness or date window. The
+[datamart README](https://github.com/cnstlungu/postcard-company-datamart#readme)
+describes each setting.
 
-The window also has to stay inside `dim_date`, whose range is declared once in
-[`includes/calendar.js`](includes/calendar.js) and mirrored by `CALENDAR_START` /
-`CALENDAR_END` in the generator. Sales outside that calendar would produce
-`fact_sales` rows whose `bought_date_key` joins to nothing and fail
-`assert_fact_sales_date_key_valid`, so the generator refuses to run and names the
-setting to change. To model a longer history, widen the calendar in both files —
-CI checks that they, and the compiled `dim_date`, agree.
-
-To check the generator after changing it:
+### 4. Upload the Parquet files to GCS
 
 ```bash
-python generator/checks.py
+gcloud storage cp data/*.parquet gs://your-bucket-here/parquet/
 ```
 
-### 5. Upload Parquet files to GCS
+### 5. Run the pipeline
+
+Pass your project and bucket on the command line:
 
 ```bash
-gsutil -m cp generator/output/*.parquet gs://your-bucket-here/parquet/
+dataform run \
+  --default-database your-gcp-project-here \
+  --vars input_files_path=gs://your-bucket-here/parquet
 ```
 
-### 6. Run the pipeline
+The same two flags work with every command below. You can put your values in
+`workflow_settings.yaml` instead, but don't commit them: CI regenerates that
+file and fails if it changed.
 
 ```bash
-# Run everything
-dataform run
+# One action
+dataform run --actions postcard_company_core.fact_sales ...
 
-# Run a single action
-dataform run --actions postcard_company_core.fact_sales
+# Everything with a tag: sources, raw, staging, core, assertions
+dataform run --tags staging ...
 
-# Run all actions with a specific tag
-dataform run --tags staging
-
-# Full refresh of an incremental model (rebuilds from scratch instead of merging)
-dataform run --full-refresh
-
-# Full refresh of one specific incremental model
-dataform run --full-refresh --actions postcard_company_staging.staging_reseller_type1_sales
-
+# Rebuild the incremental tables from scratch
+dataform run --full-refresh ...
 ```
 
-### 7. Schedule the pipeline
+### 6. Schedule it
 
-In BigQuery Dataform, create a workflow configuration that runs the daily schedule tag:
+In BigQuery Dataform, connect this repository and create a release
+configuration. Set its compilation overrides to your project, and set the
+`input_files_path` var. Then create a workflow configuration for the daily
+build:
 
 ```text
 Tag: schedule_daily
@@ -199,13 +165,11 @@ Include dependents: false
 Full refresh: false
 ```
 
-The `schedule_daily` tag is applied across the build definitions so the daily workflow can be selected directly by tag. Dataform still respects the DAG order, so the scheduled run builds the warehouse layers:
-
-```text
-sources -> raw -> staging -> core
-```
-
-Assertions keep only the `assertions` tag. If you want a separate validation workflow after the daily build, schedule or trigger:
+`schedule_daily` is on every source, raw, staging and core action. Dataform
+gives built-in assertions their table's tags, so the daily build also runs
+the uniqueness, not-null and row-condition checks. The contract, freshness and
+other standalone assertions carry the `assertions` tag. Schedule them
+separately, or run them after the build:
 
 ```text
 Tag: assertions
@@ -214,27 +178,83 @@ Include dependents: false
 Full refresh: false
 ```
 
-Use a manual full-refresh workflow with the same tag when you need to rebuild incremental tables:
+---
 
-```text
-Tag: schedule_daily
-Include dependencies: true
-Include dependents: false
-Full refresh: true
+## How it is generated
+
+Everything except `README.md`, `LICENSE`, `resources/`, `scripts/`,
+`dbt2dataform.yml`, `.gitignore` and `.github/` is generated. Don't edit the
+generated files by hand. Change the dbt project upstream, or the overrides in
+`dbt2dataform.yml`, and regenerate:
+
+```bash
+./scripts/regenerate.sh
 ```
 
-Note: `dim_product` is implemented as an operations-based SCD2 table, so a full refresh does not automatically reset its history. Drop and recreate it intentionally if you need a clean product dimension rebuild.
+The script clones the datamart at `DATAMART_REF` and runs dbt2dataform at
+`DBT2DATAFORM_REF`. Both are pinned at the top of the script. It needs
+[uv](https://docs.astral.sh/uv/). To try changes before they are released,
+point it at local checkouts:
+
+```bash
+DATAMART_DIR=../postcard-company-datamart DBT2DATAFORM=../dbt2dataform ./scripts/regenerate.sh
+```
+
+- `dbt2dataform.yml` holds the placeholder project and bucket. It also holds
+  the Dataform config that a DuckDB project cannot express: layer tags,
+  `schedule_daily`, partitioning and clustering.
+- `CONVERSION_REPORT.md` lists every file's dbt origin, and whatever was
+  renamed or behaves differently from dbt.
+- To move to a new datamart release: cut the datamart tag, bump `DATAMART_REF`,
+  regenerate, and commit the result.
+
+---
+
+## Moving from the hand-written version
+
+Until October 2026 this repo was a hand-written port of the dbt project. It
+differed from dbt in places:
+
+- Its surrogate keys used `|` and an empty string for NULL. dbt uses `-` and
+  `_dbt_utils_surrogate_key_null_`.
+- Its `dim_date` started weeks on Sunday and its week keys weren't ISO weeks.
+- It had an SCD2 `dim_product` that never produced a second version.
+
+If you ran it, the generated version changes keys, columns and partitioning.
+BigQuery can't repartition a table in place, even in a full refresh. So drop
+the incremental tables first, then rebuild everything:
+
+```bash
+bq rm -f -t your-gcp-project-here:postcard_company_staging.staging_transactions_main
+```
+```bash
+bq rm -f -t your-gcp-project-here:postcard_company_staging.staging_reseller_type1_sales
+```
+```bash
+bq rm -f -t your-gcp-project-here:postcard_company_staging.staging_reseller_type2_sales
+```
+```bash
+bq rm -f -t your-gcp-project-here:postcard_company_core.fact_sales
+```
+```bash
+dataform run --full-refresh --default-database your-gcp-project-here --vars input_files_path=gs://your-bucket-here/parquet
+```
+
+The external tables now live in `parquet_input` rather than
+`postcard_company_raw_input`, which nothing uses any more. The Parquet file
+names haven't changed, so the files you already uploaded still work.
 
 ---
 
 ## Local development
 
 ```bash
-dataform compile   # validates SQL structure and ref() resolution — no BigQuery connection needed
-dataform test      # runs unit tests against BigQuery using mock input data — requires credentials
+dataform compile        # checks SQL structure and ref() resolution; needs no credentials
+./scripts/regenerate.sh # rebuilds the project from the pinned datamart release
 ```
 
-`dataform compile` is safe to run anywhere with no credentials, which is why CI compiles on every push rather than running the pipeline. Alongside it CI checks that the compiled `dim_date` covers the range the generator enforces, and runs `python generator/checks.py` over freshly generated data. `dataform test` requires a live BigQuery connection but executes against inline mock data, so no production tables are read or written.
+CI runs both: it compiles the project, and it fails if regenerating changes
+anything.
 
 ---
 
@@ -242,23 +262,17 @@ dataform test      # runs unit tests against BigQuery using mock input data — 
 
 ```
 .
-├── workflow_settings.yaml      # Project config: GCP project, location, vars
-├── .env.example                # Environment variable reference
-├── includes/
-│   ├── calendar.js             # The calendar range dim_date materialises
-│   └── helpers.js              # Surrogate key utility
-├── definitions/
-│   ├── sources/                # External tables over GCS Parquet (raw_input layer)
-│   ├── raw/                    # Normalizing views (raw layer)
-│   ├── seeds/                  # Static geography table (100 European cities)
-│   ├── staging/                # Cleaned, typed, deduped models (staging layer)
-│   ├── core/
-│   │   ├── dim/                # Dimension tables (core layer)
-│   │   └── fact/               # Fact table (core layer)
-│   ├── assertions/             # Data quality assertions
-│   └── tests/                  # Unit tests
-└── generator/
-    ├── generate.py             # Fake data generator (Faker + PyArrow)
-    ├── checks.py               # Regression checks for the generated data
-    └── requirements.txt
+├── dbt2dataform.yml          # Conversion settings and Dataform-only overrides
+├── scripts/regenerate.sh     # Regenerates everything below from the datamart
+├── workflow_settings.yaml    # Generated; placeholders for project and bucket
+├── CONVERSION_REPORT.md      # Generated; what came from where, what differs
+├── .dbt2dataform.json        # Generated; the files the last run wrote
+├── includes/                 # Generated; surrogate keys, contract helper
+└── definitions/              # Generated
+    ├── sources/              # External tables over GCS Parquet
+    ├── raw/                  # Renaming tables
+    ├── seeds/                # The geography seed, inlined
+    ├── staging/              # Cleaned, typed, deduplicated models
+    ├── core/                 # Dimensions and the fact table
+    └── assertions/           # Tests, contracts and freshness checks
 ```

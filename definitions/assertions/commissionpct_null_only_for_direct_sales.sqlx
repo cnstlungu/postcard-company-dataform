@@ -1,0 +1,16 @@
+config {
+  type: "assertion",
+  name: "commissionpct_null_only_for_direct_sales",
+  tags: ["assertions"]
+}
+
+SELECT
+  *
+FROM ${ref("fact_sales")}
+WHERE
+  (
+    sales_agent_key = 0 AND NOT commissionpct IS NULL
+  )
+  OR (
+    sales_agent_key <> 0 AND commissionpct IS NULL
+  )

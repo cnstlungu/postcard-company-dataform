@@ -7,7 +7,30 @@ on:
     branches: ["main"]
 
 jobs:
-  dataform:
+  generated:
+    name: Generated from the datamart
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.2.0
+
+      - name: Regenerate from the pinned datamart release
+        run: ./scripts/regenerate.sh
+
+      - name: The committed project is what the pinned versions produce
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            git status --short
+            git diff
+            echo "::error::The committed project is stale. Run ./scripts/regenerate.sh and commit the result."
+            exit 1
+          fi
+
+  compile:
     name: Compile
     runs-on: ubuntu-latest
 
@@ -18,64 +41,12 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24"
 
+      # Keep in step with dataformCoreVersion in workflow_settings.yaml: older
+      # CLIs silently drop config such as onSchemaChange.
       - name: Install Dataform CLI
-        run: npm install -g @dataform/cli
-
-      - name: Create workflow settings
-        run: cp workflow_settings.yaml.example workflow_settings.yaml
+        run: npm install -g @dataform/cli@3.0.71
 
       - name: Compile
         run: dataform compile
-
-      - name: dim_date covers the range the generator enforces
-        run: |
-          dataform compile --json > /tmp/compiled.json
-          python3 - <<'PY'
-          import json, re, sys
-          from pathlib import Path
-
-          bounds = re.findall(
-              r"^CALENDAR_(?:START|END) = date\((\d+), (\d+), (\d+)\)",
-              Path("generator/generate.py").read_text(), re.M,
-          )
-          if len(bounds) != 2:
-              sys.exit("could not read CALENDAR_START/END from generator/generate.py")
-          start, end = ("%04d-%02d-%02d" % tuple(map(int, b)) for b in bounds)
-
-          compiled = json.load(open("/tmp/compiled.json"))
-          query = next(
-              t["query"] for t in compiled["tables"] if t["target"]["name"] == "dim_date"
-          )
-          array = re.search(r"GENERATE_DATE_ARRAY\([^)]*\)", query).group(0)
-          expected = "GENERATE_DATE_ARRAY(DATE '%s', DATE '%s', INTERVAL 1 DAY)" % (start, end)
-          if array != expected:
-              sys.exit(
-                  "dim_date and the generator disagree about the calendar.\n"
-                  "  generator/generate.py: %s\n"
-                  "  compiled dim_date:     %s\n"
-                  "Sales outside dim_date fail assert_fact_sales_date_key_valid."
-                  % (expected, array)
-              )
-          print("dim_date and the generator agree on %s..%s" % (start, end))
-          PY
-
-  generator:
-    name: Generator
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-
-      - name: Install generator requirements
-        run: pip install -r generator/requirements.txt
-
-      - name: Regression checks
-        run: python generator/checks.py

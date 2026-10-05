@@ -1,13 +1,22 @@
 config {
-  tags: ["core", "dim", "schedule_daily"],
   type: "table",
-  schema: "postcard_company_core",
-  description: "Channel dimension — sales channels (in-store, web, mobile app)",
-  uniqueKey: ["channel_key"]
+  schema: dataform.projectConfig.defaultSchema + "_core",
+  tags: ["core", "schedule_daily"],
+  description: "Sales channels a postcard can be bought through. Small static dimension; channel_key is carried straight through from the source id.",
+  assertions: {
+    uniqueKeys: [["channel_key"], ["channel_name"]],
+    nonNull: ["channel_key", "channel_name"],
+    rowConditions: ["channel_name IN ('in-store', 'web', 'mobile app')"]
+  }
+}
+
+post_operations {
+  ALTER TABLE ${self()} DROP PRIMARY KEY IF EXISTS;
+  ALTER TABLE ${self()} ADD PRIMARY KEY (channel_key) NOT ENFORCED
 }
 
 SELECT
   channel_key,
   original_channel_id,
   channel_name
-FROM ${ref("postcard_company_staging", "staging_channels")}
+FROM ${ref("staging_channels")}

@@ -1,0 +1,16 @@
+config {
+  type: "operations",
+  schema: "parquet_input",
+  name: "resellers",
+  description: "Master data: the resellers that sell on the company's behalf, and the country each one covers. Rewritten whole on every run.",
+  tags: ["sources", "schedule_daily"],
+  hasOutput: true
+}
+
+CREATE SCHEMA IF NOT EXISTS `${database()}.${schema()}`;
+
+CREATE OR REPLACE EXTERNAL TABLE ${self()}
+OPTIONS (
+  format = 'PARQUET',
+  uris = ['${dataform.projectConfig.vars.input_files_path}/resellers.parquet']
+)

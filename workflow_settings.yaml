@@ -1,0 +1,9 @@
+defaultProject: your-gcp-project
+defaultLocation: EU
+defaultDataset: postcard_company
+defaultAssertionDataset: postcard_company_assertions
+dataformCoreVersion: 3.0.71
+vars:
+  calendar_end: "2035-12-31"
+  calendar_start: "2010-01-01"
+  input_files_path: "gs://your-bucket/parquet"

@@ -1,0 +1,16 @@
+config {
+  type: "operations",
+  schema: "parquet_input",
+  name: "main",
+  description: "Direct sales - the company's own webshop and phone orders, one row per transaction. The largest feed: `N_TRANSACTIONS` rows, 100,000 by default.",
+  tags: ["sources", "schedule_daily"],
+  hasOutput: true
+}
+
+CREATE SCHEMA IF NOT EXISTS `${database()}.${schema()}`;
+
+CREATE OR REPLACE EXTERNAL TABLE ${self()}
+OPTIONS (
+  format = 'PARQUET',
+  uris = ['${dataform.projectConfig.vars.input_files_path}/main.parquet']
+)

@@ -1,8 +1,15 @@
 config {
-  tags: ["staging", "schedule_daily"],
   type: "table",
-  schema: "postcard_company_staging",
-  description: "Full union of all transaction sources: direct sales + reseller type 1 + reseller type 2"
+  schema: dataform.projectConfig.defaultSchema + "_staging",
+  tags: ["staging", "schedule_daily"],
+  description: "All sales from the three feeds unioned into one shape, ready for the fact table.",
+  columns: {
+    transaction_id: "Source transaction identifier. Unique across the union; this guards the id collision that used to exist between reseller feeds."
+  },
+  assertions: {
+    uniqueKeys: [["transaction_id"]],
+    nonNull: ["transaction_id"]
+  }
 }
 
 SELECT
@@ -18,12 +25,9 @@ SELECT
   geography_key,
   commissionpaid,
   commissionpct,
-  bought_date   AS transaction_date,
   loaded_timestamp
-FROM ${ref("postcard_company_staging", "staging_transactions_main")}
-
+FROM ${ref("staging_transactions_main")}
 UNION ALL
-
 SELECT
   customer_key,
   transaction_id,
@@ -32,17 +36,14 @@ SELECT
   reseller_id,
   bought_date_key,
   total_amount,
-  quantity  AS qty,
+  quantity,
   product_price,
   geography_key,
   commissionpaid,
   commissionpct,
-  created_date  AS transaction_date,
   loaded_timestamp
-FROM ${ref("postcard_company_staging", "staging_reseller_type1_sales")}
-
+FROM ${ref("staging_reseller_type1_sales")}
 UNION ALL
-
 SELECT
   customer_key,
   transaction_id,
@@ -51,12 +52,10 @@ SELECT
   reseller_id,
   bought_date_key,
   total_amount,
-  quantity  AS qty,
+  quantity,
   product_price,
   geography_key,
   commissionpaid,
   commissionpct,
-  created_date  AS transaction_date,
   loaded_timestamp
-FROM ${ref("postcard_company_staging", "staging_reseller_type2_sales")}
-QUALIFY ROW_NUMBER() OVER (PARTITION BY transaction_id ORDER BY transaction_date DESC) = 1
+FROM ${ref("staging_reseller_type2_sales")}

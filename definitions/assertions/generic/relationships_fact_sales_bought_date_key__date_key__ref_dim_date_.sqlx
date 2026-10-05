@@ -1,0 +1,11 @@
+config {
+  type: "assertion",
+  name: "relationships_fact_sales_bought_date_key__date_key__ref_dim_date_",
+  tags: ["assertions"]
+}
+
+SELECT child.bought_date_key AS missing_key
+FROM ${ref("fact_sales")} AS child
+LEFT JOIN ${ref("dim_date")} AS parent ON child.bought_date_key = parent.date_key
+WHERE child.bought_date_key IS NOT NULL
+  AND parent.date_key IS NULL
